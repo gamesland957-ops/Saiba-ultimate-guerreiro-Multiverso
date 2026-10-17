@@ -1,0 +1,28 @@
+name: Build PSP game
+
+on:
+  push:
+    branches:
+      - main
+      - "dev/**"
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: pspdev/pspdev:latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+      - name: Compile PSP executable
+        run: make clean && make
+      - name: Publish EBOOT.PBP artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SaibaUltimate-PSP
+          path: EBOOT.PBP
+          if-no-files-found: error
