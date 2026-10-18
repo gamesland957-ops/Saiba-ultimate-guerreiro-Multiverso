@@ -29,12 +29,12 @@ PSP_MAIN_THREAD_ATTR(THREAD_ATTR_USER | THREAD_ATTR_VFPU);
 
 typedef struct { unsigned int color; float x,y,z; } Vertex;
 typedef struct { float x,y; int hp; int alive; int phase; } Enemy;
-typedef enum { TITLE, PLAY, PORTAL, GAMEOVER } State;
+typedef enum { INTRO_COVER, INTRO_ROMS, INTRO_GC, TITLE, SETTINGS, TRAINING, PLAY, PORTAL, GAMEOVER } State;
 
 static unsigned int __attribute__((aligned(16))) list[262144];
 static unsigned int __attribute__((aligned(16))) fb0[STRIDE*H];
 static unsigned int __attribute__((aligned(16))) fb1[STRIDE*H];
-static State state=TITLE;
+static State state=INTRO_COVER;\nstatic int menuIndex=0, settingIndex=0, soundEnabled=1, language=0, introFrames=0;
 static float sx=112.0f, sy=188.0f, walk=0.0f, attack=0.0f, glow=0.0f;
 static int hp=100, energy=25, tools=5, score=0, mission=1, frame=0, invuln=0;
 static Enemy enemies[5]={{285,190,30,1,0},{355,170,25,1,1},{405,205,35,1,2},{310,130,25,1,3},{210,150,30,1,4}};
@@ -64,7 +64,7 @@ static void circle(float x,float y,float r,unsigned int c){
  }
 }
 static void sound(int kind){
- if(audioChannel<0)return;
+ if(audioChannel<0||!soundEnabled)return;
  static short samples[1024];
  int hz=kind==0?180:(kind==1?520:95);
  for(int i=0;i<1024;i++){
@@ -86,6 +86,32 @@ static void tree(float x,float y,float s){
  circle(x-15*s,y-43*s,15*s,rgba(48,125,57,255));
  circle(x+15*s,y-42*s,15*s,rgba(48,125,57,255));
 }
+
+static const unsigned char font5x7[36][7]={
+{14,17,17,31,17,17,17},{30,17,17,30,17,17,30},{14,17,16,16,16,17,14},
+{30,17,17,17,17,17,30},{31,16,16,30,16,16,31},{31,16,16,30,16,16,16},
+{14,17,16,23,17,17,15},{17,17,17,31,17,17,17},{14,4,4,4,4,4,14},
+{7,2,2,2,18,18,12},{17,18,20,24,20,18,17},{16,16,16,16,16,16,31},
+{17,27,21,21,17,17,17},{17,25,21,19,17,17,17},{14,17,17,17,17,17,14},
+{30,17,17,30,16,16,16},{14,17,17,17,21,18,13},{30,17,17,30,20,18,17},
+{15,16,16,14,1,1,30},{31,4,4,4,4,4,4},{17,17,17,17,17,17,14},
+{17,17,17,17,17,10,4},{17,17,17,21,21,21,10},{17,17,10,4,10,17,17},
+{17,17,10,4,4,4,4},{31,1,2,4,8,16,31},
+{14,17,19,21,25,17,14},{4,12,4,4,4,4,14},{14,17,1,2,4,8,31},
+{30,1,1,14,1,1,30},{2,6,10,18,31,2,2},{31,16,16,30,1,1,30},
+{14,16,16,30,17,17,14},{31,1,2,4,8,8,8},{14,17,17,14,17,17,14},
+{14,17,17,15,1,1,14},{0,0,0,31,0,0,0},{0,4,4,0,4,4,0}
+};
+static void text5(int x,int y,const char *str,unsigned int color,int scale){
+ for(;*str;str++,x+=6*scale){
+  char c=*str;if(c>='a'&&c<='z')c-=32;
+  int idx=-1;
+  if(c>='A'&&c<='Z')idx=c-'A';else if(c>='0'&&c<='9')idx=26+c-'0';else if(c=='-')idx=36;else if(c==':')idx=37;
+  if(idx<0)continue;
+  for(int row=0;row<7;row++)for(int col=0;col<5;col++)if(font5x7[idx][row]&(1<<(4-col)))rect(x+col*scale,y+row*scale,scale,scale,color);
+ }
+}
+
 static void village(void){
  rect(0,0,W,H,rgba(128,190,220,255));
  circle(410,38,19,rgba(255,224,140,255));
@@ -166,37 +192,52 @@ static void hud(void){
 }
 static void render(void){
  sceGuStart(GU_DIRECT,list);
- sceGuClearColor(rgba(32,31,44,255));sceGuClear(GU_COLOR_BUFFER_BIT);
+ sceGuClearColor(rgba(18,16,31,255));sceGuClear(GU_COLOR_BUFFER_BIT);
  village();
- /* residents and small details */
- npc(72,207);npc(245,183);npc(438,208);
- /* portal and golden particles appear after village is safe */
- if(state==PORTAL){
-  circle(397,117,35,rgba(31,130,255,55));circle(397,117,27,rgba(39,170,255,120));
-  circle(397,117,18,rgba(89,214,255,190));rect(393,88,8,59,rgba(190,242,255,210));
-  /* Goku silhouette: deliberately simple stand-in, not a final character sprite */
-  circle(424,149,9,rgba(225,174,117,255));
-  tri(414,144,418,126,428,141,rgba(30,27,34,255));tri(423,139,435,126,431,144,rgba(30,27,34,255));
-  rect(416,158,16,24,rgba(38,90,218,255));rect(416,181,6,14,rgba(40,37,35,255));rect(426,181,6,14,rgba(40,37,35,255));
+ if(state==INTRO_COVER){
+  /* Title splash: the final high-resolution poster is the art reference; this is a PSP-safe interim composition. */
+  rect(0,0,W,H,rgba(10,8,25,190));
+  circle(240,87,66,rgba(255,105,22,70));circle(240,87,48,rgba(38,119,255,100));
+  text5(54,38,"SOBA ULTIMATO",rgba(255,195,48,255),3);
+  text5(48,68,"GUERREIRO MULTIVERSO",WHITE,2);
+  saje(240,178,1,0);
+  text5(120,226,"PRESSIONE X",WHITE,2);
+ }else if(state==INTRO_ROMS){
+  rect(0,0,W,H,rgba(8,9,18,245));circle(240,119,66,rgba(255,180,20,80));circle(240,119,51,rgba(255,180,20,100));
+  text5(105,93,"GAME PLAY",WHITE,3);text5(151,129,"ROMS",rgba(255,195,48,255),4);
+ }else if(state==INTRO_GC){
+  rect(0,0,W,H,rgba(12,9,15,245));text5(111,84,"G C",rgba(255,195,48,255),5);
+  text5(116,143,"COMPANY",WHITE,3);line(100,176,380,176,GOLD);
+ }else if(state==TITLE||state==SETTINGS||state==TRAINING){
+  rect(10,8,460,36,rgba(16,13,24,235));text5(24,17,"SOBA ULTIMATO",GOLD,2);
+  rect(18,55,211,196,rgba(17,14,25,225));saje(118,171,1,0);
+  text5(29,207,"SAJE CAPANJI",WHITE,1);
+  rect(242,54,220,198,rgba(16,13,24,235));
+  if(state==TITLE){
+   text5(265,66,"MENU PRINCIPAL",GOLD,2);
+   const char *items[5]={"NOVO JOGO","CONTINUAR","CAMPO DE","MISSAO","DEFINICAO"};
+   for(int i=0;i<5;i++){int y=96+i*29;rect(253,y-5,196,24,i==menuIndex?rgba(153,91,21,245):rgba(40,35,48,220));if(i==menuIndex)rect(253,y-5,4,24,GOLD);text5(266,y,items[i],WHITE,1);}
+   text5(257,235,"X CONFIRMAR",GOLD,1);
+  }else if(state==SETTINGS){
+   text5(262,66,"DEFINICAO",GOLD,2);
+   text5(258,103,language?"IDIOMA: EN":"IDIOMA: PT",WHITE,1);
+   text5(258,139,soundEnabled?"SOM: LIGADO":"SOM: DESLIGADO",WHITE,1);
+   text5(258,175,"EFEITOS SONOROS",WHITE,1);
+   text5(258,224,"O VOLTAR",GOLD,1);
+   rect(250,settingIndex==0?94:settingIndex==1?130:166,204,23,rgba(151,90,20,100));
+  }else{
+   text5(261,68,"TREINAMENTO",GOLD,2);text5(258,112,"BATALHA NA ARENA",WHITE,1);text5(258,142,"X INICIAR",WHITE,1);text5(258,224,"O VOLTAR",GOLD,1);
+  }
+ }else if(state==PORTAL){
+  circle(397,117,35,rgba(31,130,255,55));circle(397,117,27,rgba(39,170,255,120));circle(397,117,18,rgba(89,214,255,190));rect(393,88,8,59,rgba(190,242,255,210));
+  circle(424,149,9,rgba(225,174,117,255));tri(414,144,418,126,428,141,rgba(30,27,34,255));tri(423,139,435,126,431,144,rgba(30,27,34,255));rect(416,158,16,24,rgba(38,90,218,255));
  }
- for(int i=0;i<5;i++)if(enemies[i].alive && state==PLAY)demon(enemies[i].x,enemies[i].y,enemies[i].phase);
- if(state==PLAY || state==PORTAL)saje(sx,sy,walk!=0,attack>0);
- if(attack>0){
-  circle(sx+30,sy-42,22,rgba(255,205,66,90));
-  for(int i=0;i<4;i++)line(sx+12,sy-35-i*4,sx+42,sy-47-i*2,rgba(255,231,126,220));
- }
- if(state==PLAY||state==PORTAL)hud();
- if(state==TITLE){
-  rect(35,36,410,195,rgba(25,25,34,220));
-  rect(48,49,384,4,GOLD);rect(48,204,384,4,RED);
-  /* Title panel uses symbolic ornaments; text overlay added in a later pass. */
-  circle(240,91,25,rgba(205,44,51,255));circle(240,91,17,GOLD);circle(240,91,8,rgba(25,25,34,255));
-  tri(105,125,135,125,120,145,GOLD);tri(345,125,375,125,360,145,GOLD);
-  saje(240,186,0,0);
- }
- if(state==GAMEOVER){rect(90,80,300,100,rgba(20,20,30,230));circle(240,110,19,rgba(185,40,44,255));}
- sceGuFinish();sceGuSync(0,0);
- sceDisplayWaitVblankStart();sceGuSwapBuffers();
+ for(int i=0;i<5;i++)if(enemies[i].alive&&(state==PLAY||state==TRAINING))demon(enemies[i].x,enemies[i].y,enemies[i].phase);
+ if(state==PLAY||state==TRAINING||state==PORTAL)saje(sx,sy,walk!=0,attack>0);
+ if(attack>0){circle(sx+30,sy-42,22,rgba(255,205,66,90));for(int i=0;i<4;i++)line(sx+12,sy-35-i*4,sx+42,sy-47-i*2,rgba(255,231,126,220));}
+ if(state==PLAY||state==TRAINING||state==PORTAL)hud();
+ if(state==GAMEOVER){rect(90,80,300,100,rgba(20,20,30,230));text5(160,105,"FIM DE JOGO",WHITE,2);text5(159,145,"X REINICIAR",GOLD,1);}
+ sceGuFinish();sceGuSync(0,0);sceDisplayWaitVblankStart();sceGuSwapBuffers();
 }
 static void reset_game(void){
  sx=112;sy=188;hp=100;energy=25;tools=5;score=0;mission=1;walk=0;attack=0;glow=0;state=PLAY;
@@ -219,8 +260,26 @@ int main(void){
  SceCtrlData pad;unsigned int prev=0;
  while(1){
   sceCtrlReadBufferPositive(&pad,1);unsigned int pressed=pad.Buttons&~prev;prev=pad.Buttons;frame++;
-  if(state==TITLE){if(pressed&PSP_CTRL_CROSS)reset_game();}
-  else if(state==PLAY){
+  if(state==INTRO_COVER){if(++introFrames>180||(pressed&PSP_CTRL_CROSS)){state=INTRO_ROMS;introFrames=0;}}
+  else if(state==INTRO_ROMS){if(++introFrames>120||(pressed&PSP_CTRL_CROSS)){state=INTRO_GC;introFrames=0;}}
+  else if(state==INTRO_GC){if(++introFrames>120||(pressed&PSP_CTRL_CROSS)){state=TITLE;introFrames=0;}}
+  else if(state==TITLE){
+   if(pressed&(PSP_CTRL_UP|PSP_CTRL_LEFT)){menuIndex=(menuIndex+4)%5;sound(0);}
+   if(pressed&(PSP_CTRL_DOWN|PSP_CTRL_RIGHT)){menuIndex=(menuIndex+1)%5;sound(0);}
+   if(pressed&PSP_CTRL_CIRCLE){state=TITLE;menuIndex=0;}
+   if(pressed&PSP_CTRL_CROSS){
+    if(menuIndex==0){reset_game();}
+    else if(menuIndex==1){reset_game();} /* save-data system will replace this temporary fallback */
+    else if(menuIndex==2){reset_game();state=TRAINING;}
+    else if(menuIndex==3){reset_game();}
+    else if(menuIndex==4){state=SETTINGS;settingIndex=0;}
+   }
+  }else if(state==SETTINGS){
+   if(pressed&(PSP_CTRL_UP|PSP_CTRL_LEFT))settingIndex=(settingIndex+2)%3;
+   if(pressed&(PSP_CTRL_DOWN|PSP_CTRL_RIGHT))settingIndex=(settingIndex+1)%3;
+   if(pressed&PSP_CTRL_CROSS){if(settingIndex==0)language=!language;else soundEnabled=!soundEnabled;}
+   if(pressed&PSP_CTRL_CIRCLE)state=TITLE;
+  }else if(state==TRAINING||state==PLAY){
    float dx=0,dy=0;
    if(pad.Buttons&PSP_CTRL_LEFT)dx=-1;if(pad.Buttons&PSP_CTRL_RIGHT)dx=1;
    if(pad.Buttons&PSP_CTRL_UP)dy=-1;if(pad.Buttons&PSP_CTRL_DOWN)dy=1;
@@ -228,20 +287,16 @@ int main(void){
    if(dx||dy){sx+=dx*1.7f;sy+=dy*1.2f;walk+=0.24f;}else walk=0;
    if(sx<20)sx=20;if(sx>460)sx=460;if(sy<112)sy=112;if(sy>247)sy=247;
    if(attack>0)attack-=1.0f;if(glow>0)glow-=0.7f;if(invuln>0)invuln--;
-   if(pressed&PSP_CTRL_CIRCLE){
-    attack=7;sound(0);
-    int nearest=-1;float best=75;
-    for(int i=0;i<5;i++)if(enemies[i].alive){float d=fabsf(enemies[i].x-sx)+fabsf(enemies[i].y-sy);if(d<best){best=d;nearest=i;}}
-    if(nearest>=0){enemies[nearest].hp-=15;if(enemies[nearest].hp<=0){enemies[nearest].alive=0;score++;}else if(invuln==0){hp-=4;invuln=25;}}
-   }
+   if(pressed&PSP_CTRL_CIRCLE){attack=7;sound(0);int nearest=-1;float best=75;for(int i=0;i<5;i++)if(enemies[i].alive){float d=fabsf(enemies[i].x-sx)+fabsf(enemies[i].y-sy);if(d<best){best=d;nearest=i;}}if(nearest>=0){enemies[nearest].hp-=15;if(enemies[nearest].hp<=0){enemies[nearest].alive=0;score++;}else if(invuln==0){hp-=4;invuln=25;}}}
    if(pressed&PSP_CTRL_TRIANGLE){if(energy>=20){energy-=20;glow=15;attack=9;sound(1);for(int i=0;i<5;i++)if(enemies[i].alive&&fabsf(enemies[i].x-sx)<95&&fabsf(enemies[i].y-sy)<65){enemies[i].hp-=22;if(enemies[i].hp<=0){enemies[i].alive=0;score++;}}}else if(energy<100)energy+=8;}
    if((pad.Buttons&PSP_CTRL_TRIANGLE)==0&&energy<100)energy++;
    if((pressed&PSP_CTRL_SQUARE)&&tools>0){tools--;sound(2);for(int i=0;i<5;i++)if(enemies[i].alive&&fabsf(enemies[i].x-sx)<110){enemies[i].hp-=18;if(enemies[i].hp<=0){enemies[i].alive=0;score++;}}attack=6;}
-   if(pressed&PSP_CTRL_RTRIGGER){invuln=40;}
-   if(pressed&PSP_CTRL_CROSS){if(score>=5){state=PORTAL;sound(1);}else{glow=4;}}
+   if(pressed&PSP_CTRL_RTRIGGER)invuln=40;
+   if((pressed&PSP_CTRL_CROSS)&&score>=5){state=PORTAL;sound(1);}
+   if(pressed&PSP_CTRL_CIRCLE && state==TRAINING){} 
    if(hp<=0)state=GAMEOVER;
-  }else if(state==PORTAL){if(pressed&PSP_CTRL_CROSS){mission=2;state=TITLE;}}
-  else if(state==GAMEOVER){if(pressed&PSP_CTRL_CROSS)reset_game();}
+  }else if(state==PORTAL){if(pressed&PSP_CTRL_CROSS){mission=2;state=TITLE;menuIndex=0;}}
+  else if(state==GAMEOVER){if(pressed&PSP_CTRL_CROSS)reset_game();if(pressed&PSP_CTRL_CIRCLE){state=TITLE;menuIndex=0;}}
   render();sceKernelDelayThread(16000);
  }
  sceGuTerm();return 0;
