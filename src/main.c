@@ -1,173 +1,247 @@
 /*
  * Saiba Ultimate: Guerreiro do Multiverso
- * Capitulo 1 — A Fenda Entre Mundos
- * PSP SDK / PPSSPP prototype. Explore Africaca, speak with NPCs,
- * follow the elders, fight basic demons, then meet Goku at the portal.
+ * Primeiro prototipo grafico PSP: Aldeia Africaca / Saje Capanji.
+ * Renderizacao 2D por PSP GU; arte procedural provisoria, sprites finais por integrar.
  */
 #include <pspkernel.h>
-#include <pspdebug.h>
-#include <pspctrl.h>
 #include <pspdisplay.h>
-#include <stdio.h>
+#include <pspctrl.h>
+#include <pspgu.h>
+#include <pspgum.h>
+#include <pspaudio.h>
+#include <math.h>
 #include <string.h>
+#include <stdio.h>
 
 PSP_MODULE_INFO("Saiba Ultimate", 0, 1, 0);
 PSP_MAIN_THREAD_ATTR(THREAD_ATTR_USER | THREAD_ATTR_VFPU);
 
-typedef enum { TITLE, EXPLORE, DIALOGUE, FIGHT, MISSION_CLEAR, MISSION_TWO, GAME_OVER } GameState;
-typedef struct { const char *name; const char *desc; int exits[4]; int npc; int demons; } Area;
-typedef struct { const char *name; const char *line; int elder; } NPC;
-typedef struct { const char *name; int hp; int attack; } Demon;
+#define W 480
+#define H 272
+#define STRIDE 512
+#define BUF_SIZE (512 * 272 * 4)
+#define WHITE 0xffffffff
+#define BLACK 0xff15121b
+#define RED 0xff3030b8
+#define GOLD 0xff35d8ff
+#define GREEN 0xff369b45
+#define DIRT 0xff356d9b
 
-static Area areas[] = {
- {"Praca das Baobas", "Uma praca central com baobas antigos, bancas e casas de barro vermelho.", {1,2,-1,-1}, 0, 0},
- {"Rua dos Teceloes", "Tecidos coloridos balancam entre casas; ouves passos e rosnados numa viela.", {0,3,-1,-1}, 1, 2},
- {"Mercado de Africaca", "Cestos, frutas e ceramica espalhados. Os moradores procuram abrigo.", {0,4,-1,-1}, 2, 2},
- {"Beco das Forjas", "O cheiro de ferro quente mistura-se com fumo negro vindo de um portal menor.", {1,5,-1,-1}, 3, 3},
- {"Rua dos Ancioes", "Uma avenida estreita leva ao conselho da aldeia; ha marcas de garras nas paredes.", {2,5,-1,-1}, 4, 1},
- {"Santuario do Vento", "Panos rituais rodeiam pedras ancestrais. Uma luz dourada pulsa ao longe.", {3,4,-1,-1}, 5, 2}
-};
-#define AREA_COUNT 6
-static NPC npcs[] = {
- {"Malaika, a curandeira", "\"Saje! Os demonios sairam de uma fenda durante a noite. Ajuda os nossos!\""},
- {"Kito, aprendiz de ferreiro", "\"Vi-os a bloquear a Rua dos Teceloes. Os golpes comuns funcionam, mas mantem distancia!\""},
- {"Nia, comerciante", "\"Levaram os alimentos e assustaram as familias. Ha criaturas no mercado e no beco!\""},
- {"Bako, guarda da aldeia", "\"A passagem do santuario esta perigosa. Derrota os demonios e segue para norte!\""},
- {"Ancia Amara", "\"Saje Capanji, os quatro elementos vivem em ti. A aldeia precisa da tua coragem.\""},
- {"Ancia Kwezi", "\"Segue as marcas douradas ate ao portal. Depois do ultimo demonio, alguem de outro mundo espera por ti.\""}
-};
-static Demon demons[] = {
- {"Demonio de Cinzas", 24, 5}, {"Lacaio Sombrio", 28, 6},
- {"Demonio Rastejante", 22, 4}, {"Demonio da Fenda", 32, 7}
-};
-static GameState state = TITLE;
-static int area_id=0, hp=120, energy=2, tools=5, defeated=0, talked[6]={0};
-static int fight_area=-1, demon_index=0, demon_hp=0, dialogue_npc=-1, chapter2_started=0;
-static char message[160]="";
-static unsigned int tick=0;
+typedef struct { float x,y,z; unsigned int color; } Vertex;
+typedef struct { float x,y; int hp; int alive; int phase; } Enemy;
+typedef enum { TITLE, PLAY, PORTAL, GAMEOVER } State;
 
-static void say(const char *s) { snprintf(message,sizeof(message),"%s",s); }
-static void begin_fight(int area) {
- fight_area=area; demon_index=0; demon_hp=demons[(tick+area)%4].hp;
- state=FIGHT;
- snprintf(message,sizeof(message),"Um demonio bloqueia o caminho! O: atacar, Triangulo: poder elemental.");
+static unsigned int __attribute__((aligned(16))) list[262144];
+static unsigned int __attribute__((aligned(16))) fb0[STRIDE*H];
+static unsigned int __attribute__((aligned(16))) fb1[STRIDE*H];
+static State state=TITLE;
+static float sx=112.0f, sy=188.0f, walk=0.0f, attack=0.0f, glow=0.0f;
+static int hp=100, energy=25, tools=5, score=0, mission=1, frame=0, invuln=0;
+static Enemy enemies[5]={{285,190,30,1,0},{355,170,25,1,1},{405,205,35,1,2},{310,130,25,1,3},{210,150,30,1,4}};
+static int audioChannel=-1;
+
+static unsigned int rgba(int r,int g,int b,int a){return ((unsigned int)a<<24)|((unsigned int)b<<16)|((unsigned int)g<<8)|(unsigned int)r;}
+static void rect(float x,float y,float w,float h,unsigned int c){
+ Vertex *v=(Vertex*)sceGuGetMemory(2*sizeof(Vertex));
+ v[0].x=x;v[0].y=y;v[0].z=0;v[0].color=c;
+ v[1].x=x+w;v[1].y=y+h;v[1].z=0;v[1].color=c;
+ sceGuDrawArray(GU_SPRITES,GU_COLOR_8888|GU_VERTEX_32BITF|GU_TRANSFORM_2D,2,0,v);
 }
-static void next_demon(void) {
- defeated++;
- int left=areas[fight_area].demons-(defeated%10);
- (void)left;
- if (demon_index+1 < areas[fight_area].demons) {
-   demon_index++;
-   demon_hp=demons[(tick+demon_index+fight_area)%4].hp;
-   snprintf(message,sizeof(message),"Outro demonio surge! %s.",demons[(tick+demon_index+fight_area)%4].name);
+static void tri(float x1,float y1,float x2,float y2,float x3,float y3,unsigned int c){
+ Vertex *v=(Vertex*)sceGuGetMemory(3*sizeof(Vertex));
+ v[0]=(Vertex){x1,y1,0,c};v[1]=(Vertex){x2,y2,0,c};v[2]=(Vertex){x3,y3,0,c};
+ sceGuDrawArray(GU_TRIANGLES,GU_COLOR_8888|GU_VERTEX_32BITF|GU_TRANSFORM_2D,3,0,v);
+}
+static void line(float x1,float y1,float x2,float y2,unsigned int c){
+ Vertex *v=(Vertex*)sceGuGetMemory(2*sizeof(Vertex));
+ v[0]=(Vertex){x1,y1,0,c};v[1]=(Vertex){x2,y2,0,c};
+ sceGuDrawArray(GU_LINES,GU_COLOR_8888|GU_VERTEX_32BITF|GU_TRANSFORM_2D,2,0,v);
+}
+static void circle(float x,float y,float r,unsigned int c){
+ for(int i=0;i<12;i++){
+  float a=(float)i*0.523599f,b=(float)(i+1)*0.523599f;
+  tri(x,y,x+cosf(a)*r,y+sinf(a)*r,x+cosf(b)*r,y+sinf(b)*r,c);
+ }
+}
+static void sound(int kind){
+ if(audioChannel<0)return;
+ static short samples[1024];
+ int hz=kind==0?180:(kind==1?520:95);
+ for(int i=0;i<1024;i++){
+  float env=1.0f-(float)i/1024.0f;
+  samples[i]=(short)(sinf((float)i*(float)hz*6.2831853f/44100.0f)*env*4500.0f);
+ }
+ sceAudioOutputPannedBlocking(audioChannel,PSP_AUDIO_VOLUME_MAX,PSP_AUDIO_VOLUME_MAX,samples);
+}
+static void hut(float x,float y,float scale){
+ rect(x,y,76*scale,42*scale,rgba(157,87,48,255));
+ tri(x-7*scale,y,x+38*scale,y-31*scale,x+83*scale,y,rgba(78,42,31,255));
+ rect(x+8*scale,y+13*scale,14*scale,29*scale,rgba(70,39,29,255));
+ rect(x+48*scale,y+11*scale,18*scale,12*scale,rgba(58,95,112,255));
+ line(x+1*scale,y+7*scale,x+74*scale,y+7*scale,rgba(233,164,78,255));
+}
+static void tree(float x,float y,float s){
+ rect(x-5*s,y-40*s,10*s,48*s,rgba(91,57,37,255));
+ circle(x,y-48*s,22*s,rgba(39,106,53,255));
+ circle(x-15*s,y-43*s,15*s,rgba(48,125,57,255));
+ circle(x+15*s,y-42*s,15*s,rgba(48,125,57,255));
+}
+static void village(void){
+ rect(0,0,W,H,rgba(128,190,220,255));
+ circle(410,38,19,rgba(255,224,140,255));
+ rect(0,83,W,74,rgba(116,151,94,255));
+ rect(0,152,W,120,rgba(174,119,67,255));
+ /* dusty village lane and stones */
+ tri(125,272,225,143,293,143,398,272,rgba(193,143,84,255));
+ rect(0,249,W,23,rgba(139,91,54,255));
+ hut(18,122,0.82f);hut(111,104,0.70f);hut(350,116,0.83f);
+ tree(260,139,0.85f);tree(455,139,0.72f);tree(77,155,0.55f);
+ /* market awnings */
+ tri(165,164,201,164,183,137,rgba(176,52,45,255));
+ tri(201,164,236,164,218,137,rgba(226,183,76,255));
+ rect(166,164,69,4,rgba(91,49,34,255));
+ rect(169,170,8,14,rgba(207,128,58,255));rect(185,170,8,14,rgba(87,140,78,255));
+ rect(202,170,8,14,rgba(194,77,59,255));rect(218,170,8,14,rgba(223,180,75,255));
+}
+static void npc(float x,float y){
+ circle(x,y-25,8,rgba(93,54,35,255));
+ rect(x-8,y-17,16,22,rgba(53,91,125,255));
+ tri(x-8,y-14,x+8,y-14,x,y-2,rgba(222,172,95,255));
+ rect(x-7,y+5,5,13,rgba(54,43,35,255));rect(x+2,y+5,5,13,rgba(54,43,35,255));
+}
+static void saje(float x,float y,int moving,int attacking){
+ float bob=moving?sinf(walk)*2.5f:0;
+ /* sword on back, then black/red tunic and legs */
+ line(x+7,y-40+bob,x+22,y-66+bob,rgba(205,213,220,255));
+ line(x+4,y-41+bob,x+19,y-67+bob,rgba(90,100,113,255));
+ rect(x-10,y-23+bob,7,20,rgba(38,29,28,255));rect(x+3,y-23+bob,7,20,rgba(38,29,28,255));
+ rect(x-11,y-42+bob,23,24,rgba(26,25,32,255));
+ tri(x-11,y-40+bob,x+12,y-40+bob,x,y-19+bob,rgba(166,38,44,255));
+ /* African geometric trim */
+ line(x-8,y-35+bob,x+8,y-35+bob,GOLD);line(x-7,y-29+bob,x+7,y-29+bob,GOLD);
+ tri(x-7,y-33+bob,x,y-38+bob,x+7,y-33+bob,rgba(255,205,69,255));
+ rect(x-15,y-39+bob,5,17,rgba(25,24,31,255));rect(x+12,y-39+bob,5,17,rgba(25,24,31,255));
+ circle(x,y-50+bob,10,rgba(87,49,34,255));
+ /* short, tightly curled hair */
+ for(int i=-2;i<=2;i++)for(int j=0;j<2;j++)circle(x+i*3.3f,y-58+bob+j*2,2.5f,rgba(28,21,20,255));
+ /* determined eyes and white facial markings */
+ rect(x-5,y-52+bob,3,2,WHITE);rect(x+3,y-52+bob,3,2,WHITE);
+ line(x-6,y-48+bob,x-3,y-45+bob,WHITE);line(x+6,y-48+bob,x+3,y-45+bob,WHITE);
+ circle(x-6,y-39+bob,2,rgba(225,174,63,255));circle(x+6,y-39+bob,2,rgba(225,174,63,255));
+ if(attacking>0){
+  line(x+13,y-38+bob,x+34,y-50+bob,rgba(228,232,242,255));
+  line(x+17,y-32+bob,x+39,y-44+bob,rgba(255,205,72,255));
+  circle(x+38,y-46+bob,9,rgba(255,222,90,100));
  } else {
-   areas[fight_area].demons=0;
-   state=EXPLORE;
-   snprintf(message,sizeof(message),"Zona segura. Os moradores podem voltar a sair.");
+  line(x+13,y-37+bob,x+21,y-28+bob,rgba(184,45,48,255));
  }
+ if(glow>0){circle(x,y-39+bob,22+fmodf(glow,7),rgba(255,205,70,90));}
 }
-static void draw_bar(const char *label,int value,int max) {
- int n=max>0?value*16/max:0; if(n<0)n=0;if(n>16)n=16;
- pspDebugScreenPrintf("%s [",label);
- for(int i=0;i<16;i++) pspDebugScreenPrintf(i<n?"#":"-");
- pspDebugScreenPrintf("] %d/%d\n",value,max);
+static void demon(float x,float y,int phase){
+ float wob=sinf((float)frame*0.12f+phase)*3;
+ circle(x,y-32+wob,11,rgba(50,34,52,255));
+ tri(x-8,y-39+wob,x-14,y-52+wob,x-3,y-43+wob,rgba(50,34,52,255));
+ tri(x+5,y-42+wob,x+13,y-54+wob,x+10,y-37+wob,rgba(50,34,52,255));
+ rect(x-12,y-24+wob,24,25,rgba(60,37,64,255));
+ tri(x-12,y-19+wob,x+12,y-19+wob,x,y+3+wob,rgba(43,27,50,255));
+ rect(x-8,y-34+wob,4,3,rgba(255,71,52,255));rect(x+4,y-34+wob,4,3,rgba(255,71,52,255));
+ line(x-8,y+1+wob,x-14,y+12+wob,rgba(45,30,45,255));line(x+8,y+1+wob,x+14,y+12+wob,rgba(45,30,45,255));
+ rect(x-12,y-43+wob,24,2,rgba(255,85,58,180));
 }
-static void open_npc(int id) {
- dialogue_npc=id;
- state=DIALOGUE;
- snprintf(message,sizeof(message),"%s",npcs[id].line);
- if(id>=4 && !talked[id]) {
-   talked[id]=1;
-   if(id==4) say("\"Saje, os ancioes estao no santuario. Limpa as ruas e vem falar connosco!\"");
-   if(id==5) say("\"O ultimo demonio protege o portal. Vence-o e encontra quem esta do outro lado.\"");
+static void bar(float x,float y,float width,float value,float max,unsigned int c){
+ rect(x,y,width,6,rgba(30,24,31,230));
+ if(value<0)value=0;if(value>max)value=max;
+ rect(x+1,y+1,(width-2)*value/max,4,c);
+}
+static void hud(void){
+ rect(8,8,180,39,rgba(24,23,31,210));
+ saje(24,43,0,0);
+ /* cover the tiny preview's lower edge with HUD panel */
+ rect(39,14,143,7,rgba(60,47,49,255));bar(40,15,140,hp,100,rgba(56,202,91,255));
+ rect(40,27,140,5,rgba(60,47,49,255));bar(40,27,140,energy,100,rgba(48,195,246,255));
+ rect(292,8,180,31,rgba(24,23,31,210));
+ for(int i=0;i<5;i++)circle(308+i*13,20,4, i<tools?rgba(255,205,73,255):rgba(95,85,75,255));
+ for(int i=0;i<5;i++)rect(374+i*15,14,10,10,i<score?rgba(255,180,55,255):rgba(91,77,72,255));
+}
+static void render(void){
+ sceGuStart(GU_DIRECT,list);
+ sceGuClearColor(rgba(32,31,44,255));sceGuClear(GU_COLOR_BUFFER_BIT);
+ village();
+ /* residents and small details */
+ npc(72,207);npc(245,183);npc(438,208);
+ /* portal and golden particles appear after village is safe */
+ if(state==PORTAL){
+  circle(397,117,35,rgba(31,130,255,55));circle(397,117,27,rgba(39,170,255,120));
+  circle(397,117,18,rgba(89,214,255,190));rect(393,88,8,59,rgba(190,242,255,210));
+  /* Goku silhouette: deliberately simple stand-in, not a final character sprite */
+  circle(424,149,9,rgba(225,174,117,255));
+  tri(414,144,418,126,428,141,rgba(30,27,34,255));tri(423,139,435,126,431,144,rgba(30,27,34,255));
+  rect(416,158,16,24,rgba(38,90,218,255));rect(416,181,6,14,rgba(40,37,35,255));rect(426,181,6,14,rgba(40,37,35,255));
  }
+ for(int i=0;i<5;i++)if(enemies[i].alive && state==PLAY)demon(enemies[i].x,enemies[i].y,enemies[i].phase);
+ if(state==PLAY || state==PORTAL)saje(sx,sy,walk!=0,attack>0);
+ if(attack>0){
+  circle(sx+30,sy-42,22,rgba(255,205,66,90));
+  for(int i=0;i<4;i++)line(sx+12,sy-35-i*4,sx+42,sy-47-i*2,rgba(255,231,126,220));
+ }
+ if(state==PLAY||state==PORTAL)hud();
+ if(state==TITLE){
+  rect(35,36,410,195,rgba(25,25,34,220));
+  rect(48,49,384,4,GOLD);rect(48,204,384,4,RED);
+  /* Title panel uses symbolic ornaments; text overlay added in a later pass. */
+  circle(240,91,25,rgba(205,44,51,255));circle(240,91,17,GOLD);circle(240,91,8,rgba(25,25,34,255));
+  tri(105,125,135,125,120,145,GOLD);tri(345,125,375,125,360,145,GOLD);
+  saje(240,186,0,0);
+ }
+ if(state==GAMEOVER){rect(90,80,300,100,rgba(20,20,30,230));circle(240,110,19,rgba(185,40,44,255));}
+ sceGuFinish();sceGuSync(0,0);
+ sceDisplayWaitVblankStart();sceGuSwapBuffers();
 }
-static void draw_world(void) {
- pspDebugScreenPrintf("CAPITULO 1: A FENDA ENTRE MUNDOS | DIFICULDADE: FACIL\n");
- pspDebugScreenPrintf("SAJE CAPANJI   ");
- draw_bar("VIDA",hp,120);
- pspDebugScreenPrintf("Energia: %d/5   Ferramentas: %d   Demonios vencidos: %d\n\n",energy,tools,defeated);
- pspDebugScreenPrintf("LOCAL: %s\n%s\n\n",areas[area_id].name,areas[area_id].desc);
- pspDebugScreenPrintf("Pessoas por perto: %s\n",npcs[areas[area_id].npc].name);
- pspDebugScreenPrintf("Saidas: CIMA / BAIXO / ESQUERDA / DIREITA\n");
- pspDebugScreenPrintf("X: falar/interagir  O: ataque se houver demonios\n");
- pspDebugScreenPrintf("TRIANGULO: concentrar elemento  QUADRADO: ferramenta\n");
- pspDebugScreenPrintf("R: defesa  START: reiniciar capitulo\n\n");
- pspDebugScreenPrintf("%s\n",message);
+static void reset_game(void){
+ sx=112;sy=188;hp=100;energy=25;tools=5;score=0;mission=1;walk=0;attack=0;glow=0;state=PLAY;
+ Enemy fresh[5]={{285,190,30,1,0},{355,170,25,1,1},{405,205,35,1,2},{310,130,25,1,3},{210,150,30,1,4}};
+ memcpy(enemies,fresh,sizeof(fresh));
 }
-int main(void) {
- SceCtrlData pad; unsigned int prev=0;
- sceCtrlSetSamplingCycle(0); sceCtrlSetSamplingMode(PSP_CTRL_MODE_ANALOG); pspDebugScreenInit();
- while(1) {
-  sceCtrlReadBufferPositive(&pad,1);
-  unsigned int pressed=pad.Buttons & ~prev; prev=pad.Buttons;
-  pspDebugScreenSetXY(0,0); pspDebugScreenClear();
-  pspDebugScreenPrintf("===============================================\n SAIBA ULTIMATE: GUERREIRO DO MULTIVERSO\n===============================================\n\n");
-  switch(state) {
-  case TITLE:
-   pspDebugScreenPrintf("CAPITULO 1 — A FENDA ENTRE MUNDOS\n\nALDEIA AFRICACA\nA noite caiu sobre a aldeia. Uma fenda abriu-se no ceu\nlibertando demonios enviados para destruir e oprimir o povo.\nSaje Capanji, guardiao dos quatro elementos, corre para ajudar.\n\nX: iniciar missao\n");
-   if(pressed&PSP_CTRL_CROSS){state=EXPLORE;area_id=0;hp=120;energy=2;tools=5;defeated=0;say("Malaika: \"Saje! Ainda ha gente presa nas ruas!\"");}
-   break;
-  case EXPLORE:
-   draw_world();
-   if(pressed&PSP_CTRL_START){state=TITLE;memset(talked,0,sizeof(talked));for(int i=0;i<AREA_COUNT;i++)areas[i].demons=(int[]){0,2,2,3,1,2}[i];say("A aventura foi reiniciada.");break;}
-   if(pressed&PSP_CTRL_UP){int n=areas[area_id].exits[0];if(n>=0){area_id=n;say("Avancas pela aldeia. Ouves os gritos dos demonios ao longe.");}else say("Nao ha passagem nessa direcao.");}
-   if(pressed&PSP_CTRL_DOWN){int n=areas[area_id].exits[1];if(n>=0){area_id=n;say("Exploras outra rua de Africaca.");}else say("A rua termina aqui.");}
-   if(pressed&PSP_CTRL_LEFT){int n=areas[area_id].exits[2];if(n>=0){area_id=n;say("Segues pela rua lateral.");}else say("Nao ha passagem nessa direcao.");}
-   if(pressed&PSP_CTRL_RIGHT){int n=areas[area_id].exits[3];if(n>=0){area_id=n;say("Segues pela rua lateral.");}else say("Nao ha passagem nessa direcao.");}
-   if((pressed&PSP_CTRL_CROSS)){
-    int n=areas[area_id].npc;
-    if((area_id==4||area_id==5) && areas[area_id].demons>0) say("Os demonios impedem-te de chegar aos ancioes. Limpa esta zona!");
-    else if((area_id==4||area_id==5) && defeated<10) open_npc(n);
-    else if(area_id==5 && areas[area_id].demons==0) {state=MISSION_CLEAR;say("A aldeia esta segura. Um guerreiro de cabelo espetado surge junto ao portal.");}
-    else open_npc(n);
+int main(void){
+ sceCtrlSetSamplingCycle(0);sceCtrlSetSamplingMode(PSP_CTRL_MODE_ANALOG);
+ sceGuInit();
+ sceGuStart(GU_DIRECT,list);
+ sceGuDrawBuffer(GU_PSM_8888,(void*)0,STRIDE);
+ sceGuDispBuffer(W,H,(void*)0x88000,STRIDE);
+ sceGuDepthBuffer((void*)0x110000,STRIDE);
+ sceGuOffset(2048-(W/2),2048-(H/2));sceGuViewport(2048,2048,W,H);
+ sceGuDepthRange(65535,0);sceGuScissor(0,0,W,H);sceGuEnable(GU_SCISSOR_TEST);
+ sceGuDisable(GU_DEPTH_TEST);sceGuDisable(GU_CULL_FACE);sceGuEnable(GU_BLEND);
+ sceGuBlendFunc(GU_ADD,GU_SRC_ALPHA,GU_ONE_MINUS_SRC_ALPHA,0,0);
+ sceGuFinish();sceGuSync(0,0);sceDisplayWaitVblankStart();sceGuDisplay(GU_TRUE);
+ audioChannel=sceAudioChReserve(-1,1024,PSP_AUDIO_FORMAT_MONO);
+ SceCtrlData pad;unsigned int prev=0;
+ while(1){
+  sceCtrlReadBufferPositive(&pad,1);unsigned int pressed=pad.Buttons&~prev;prev=pad.Buttons;frame++;
+  if(state==TITLE){if(pressed&PSP_CTRL_CROSS)reset_game();}
+  else if(state==PLAY){
+   float dx=0,dy=0;
+   if(pad.Buttons&PSP_CTRL_LEFT)dx=-1;if(pad.Buttons&PSP_CTRL_RIGHT)dx=1;
+   if(pad.Buttons&PSP_CTRL_UP)dy=-1;if(pad.Buttons&PSP_CTRL_DOWN)dy=1;
+   if(pad.Lx<105)dx=-1;if(pad.Lx>150)dx=1;if(pad.Ly<105)dy=-1;if(pad.Ly>150)dy=1;
+   if(dx||dy){sx+=dx*1.7f;sy+=dy*1.2f;walk+=0.24f;}else walk=0;
+   if(sx<20)sx=20;if(sx>460)sx=460;if(sy<112)sy=112;if(sy>247)sy=247;
+   if(attack>0)attack-=1.0f;if(glow>0)glow-=0.7f;if(invuln>0)invuln--;
+   if(pressed&PSP_CTRL_CIRCLE){
+    attack=7;sound(0);
+    int nearest=-1;float best=75;
+    for(int i=0;i<5;i++)if(enemies[i].alive){float d=fabsf(enemies[i].x-sx)+fabsf(enemies[i].y-sy);if(d<best){best=d;nearest=i;}}
+    if(nearest>=0){enemies[nearest].hp-=15;if(enemies[nearest].hp<=0){enemies[nearest].alive=0;score++;}else if(invuln==0){hp-=4;invuln=25;}}
    }
-   if((pressed&PSP_CTRL_CIRCLE)&&areas[area_id].demons>0)begin_fight(area_id);
-   if((pressed&PSP_CTRL_TRIANGLE)&&energy<5){energy++;say("Saje inspira. O ar, a agua, o fogo e a terra respondem; energia +1.");}
-   if((pressed&PSP_CTRL_SQUARE)&&tools>0&&areas[area_id].demons>0){tools--;begin_fight(area_id);demon_hp-=10;if(demon_hp<0)demon_hp=0;say("FERRAMENTA! A lamina atinge o demonio (-10).");}
-   if((pressed&PSP_CTRL_RTRIGGER))say("Saje ergue a guarda. O proximo golpe sera reduzido.");
-   if(areas[area_id].demons>0 && (pressed&(PSP_CTRL_CIRCLE|PSP_CTRL_SQUARE))==0 && (tick++%240)==0){hp-=3;if(hp<1)state=GAME_OVER;say("Um demonio ataca de longe! Perdes 3 pontos de vida.");}
-   if(area_id==5 && areas[5].demons==0 && defeated>=10){say("Os ancioes esperam por ti. Pressiona X para falar com eles.");}
-   break;
-  case DIALOGUE:
-   pspDebugScreenPrintf("AFRICACA — CONVERSA\n\n%s\n\n",message);
-   pspDebugScreenPrintf("X: continuar / terminar conversa\n");
-   if(pressed&PSP_CTRL_CROSS){state=EXPLORE;if(dialogue_npc==5&&defeated>=10){state=MISSION_CLEAR;say("Ao longe, um portal azul abre-se. Um guerreiro desconhecido aproxima-se.");}else say("A conversa terminou. Continua a explorar Africaca.");}
-   break;
-  case FIGHT: {
-   int di=(tick+demon_index+fight_area)%4;
-   pspDebugScreenPrintf("COMBATE — AFRICACA | MODO FACIL\n");
-   draw_bar("SAJE",hp,120);draw_bar(demons[di].name,demon_hp,demons[di].hp);
-   pspDebugScreenPrintf("Energia: %d/5 | Ferramentas: %d\n\n",energy,tools);
-   pspDebugScreenPrintf("O: golpe  TRIANGULO: tecnica elemental\nQUADRADO: ferramenta  R: bloquear  X: recuar\n\n%s\n",message);
-   if(pressed&PSP_CTRL_CROSS){state=EXPLORE;say("Recuas para criar distancia.");}
-   if(pressed&PSP_CTRL_RTRIGGER){say("Defesa! Saje protege-se do contra-ataque.");}
-   if(pressed&PSP_CTRL_TRIANGLE){if(energy<5)energy++;say("Os quatro elementos giram a volta de Saje. Energia +1.");}
-   if((pressed&PSP_CTRL_SQUARE)&&tools>0){tools--;demon_hp-=12;say("A ferramenta acerta o alvo! -12 HP.");}
-   if(pressed&PSP_CTRL_CIRCLE){int dmg=14;if(energy>0&&(pad.Buttons&PSP_CTRL_TRIANGLE)){dmg=32;energy--;say("RAJADA DOS QUATRO ELEMENTOS! -32 HP.");}else say("Saje desfere um combo elemental! -14 HP.");demon_hp-=dmg;}
-   if(demon_hp<=0){next_demon();break;}
-   if(pressed&(PSP_CTRL_CIRCLE|PSP_CTRL_SQUARE)){hp-=demons[di].attack;if(hp<1)state=GAME_OVER;}
-   break; }
-  case MISSION_CLEAR:
-   pspDebugScreenPrintf("MISSAO 1 CONCLUIDA: AFRICACA RESISTE!\n\n");
-   pspDebugScreenPrintf("Os ultimos demonios desaparecem em fumo negro.\nAs portas abrem-se e os habitantes saem dos esconderijos.\nOs ancioes agradecem a Saje por salvar a aldeia.\n\n");
-   pspDebugScreenPrintf("Junto a um portal azul esta Goku, em forma base.\nGoku: \"Tu tambem sentiste esta energia? O portal liga\nmundos diferentes. Precisamos de descobrir quem o abriu.\"\n\n");
-   pspDebugScreenPrintf("X: iniciar Missao 2 a partir do portal\n");
-   if(pressed&PSP_CTRL_CROSS){state=MISSION_TWO;chapter2_started=1;say("Goku: \"Vamos atravessar juntos. Fica atento, Saje.\"");}
-   break;
-  case MISSION_TWO:
-   pspDebugScreenPrintf("CAPITULO 1 — MISSAO 2: ALEM DO PORTAL\n\n");
-   pspDebugScreenPrintf("PONTO DE CONTINUACAO: PORTAL AZUL, AFRICACA\nSaje e Goku estao lado a lado. A passagem pulsa e\nmostra ruinas de um mundo desconhecido.\n\n%s\n\n",message);
-   pspDebugScreenPrintf("A continuacao narrativa esta preparada; a proxima\netapa acrescentara a area do outro lado do portal.\n\n");
-   pspDebugScreenPrintf("START: voltar ao inicio do capitulo\n");
-   if(pressed&PSP_CTRL_START){state=TITLE;chapter2_started=0;}
-   break;
-  case GAME_OVER:
-   pspDebugScreenPrintf("SAJE FOI DERROTADO\n\nAfricaca ainda precisa de ti.\nX: tentar novamente\n");
-   if(pressed&PSP_CTRL_CROSS){hp=120;energy=2;tools=5;defeated=0;area_id=0;for(int i=0;i<AREA_COUNT;i++)areas[i].demons=(int[]){0,2,2,3,1,2}[i];state=EXPLORE;say("Malaika: \"Levanta-te, Saje. A aldeia conta contigo!\"");}
-   break;
-  }
-  sceDisplayWaitVblankStart();sceKernelDelayThread(1000);
+   if(pressed&PSP_CTRL_TRIANGLE){if(energy>=20){energy-=20;glow=15;attack=9;sound(1);for(int i=0;i<5;i++)if(enemies[i].alive&&fabsf(enemies[i].x-sx)<95&&fabsf(enemies[i].y-sy)<65){enemies[i].hp-=22;if(enemies[i].hp<=0){enemies[i].alive=0;score++;}}}else if(energy<100)energy+=8;}
+   if((pad.Buttons&PSP_CTRL_TRIANGLE)==0&&energy<100)energy++;
+   if((pressed&PSP_CTRL_SQUARE)&&tools>0){tools--;sound(2);for(int i=0;i<5;i++)if(enemies[i].alive&&fabsf(enemies[i].x-sx)<110){enemies[i].hp-=18;if(enemies[i].hp<=0){enemies[i].alive=0;score++;}}attack=6;}
+   if(pressed&PSP_CTRL_RTRIGGER){invuln=40;}
+   if(pressed&PSP_CTRL_CROSS){if(score>=5){state=PORTAL;sound(1);}else{glow=4;}}
+   if(hp<=0)state=GAMEOVER;
+  }else if(state==PORTAL){if(pressed&PSP_CTRL_CROSS){mission=2;state=TITLE;}}
+  else if(state==GAMEOVER){if(pressed&PSP_CTRL_CROSS)reset_game();}
+  render();sceKernelDelayThread(16000);
  }
- return 0;
+ sceGuTerm();return 0;
 }
