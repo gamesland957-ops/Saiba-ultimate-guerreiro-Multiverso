@@ -27,7 +27,7 @@ PSP_MAIN_THREAD_ATTR(THREAD_ATTR_USER | THREAD_ATTR_VFPU);
 #define GREEN 0xff369b45
 #define DIRT 0xff356d9b
 
-typedef struct { float x,y,z; unsigned int color; } Vertex;
+typedef struct { unsigned int color; float x,y,z; } Vertex;
 typedef struct { float x,y; int hp; int alive; int phase; } Enemy;
 typedef enum { TITLE, PLAY, PORTAL, GAMEOVER } State;
 
@@ -49,12 +49,12 @@ static void rect(float x,float y,float w,float h,unsigned int c){
 }
 static void tri(float x1,float y1,float x2,float y2,float x3,float y3,unsigned int c){
  Vertex *v=(Vertex*)sceGuGetMemory(3*sizeof(Vertex));
- v[0]=(Vertex){x1,y1,0,c};v[1]=(Vertex){x2,y2,0,c};v[2]=(Vertex){x3,y3,0,c};
+ v[0]=(Vertex){c,x1,y1,0};v[1]=(Vertex){c,x2,y2,0};v[2]=(Vertex){c,x3,y3,0};
  sceGuDrawArray(GU_TRIANGLES,GU_COLOR_8888|GU_VERTEX_32BITF|GU_TRANSFORM_2D,3,0,v);
 }
 static void line(float x1,float y1,float x2,float y2,unsigned int c){
  Vertex *v=(Vertex*)sceGuGetMemory(2*sizeof(Vertex));
- v[0]=(Vertex){x1,y1,0,c};v[1]=(Vertex){x2,y2,0,c};
+ v[0]=(Vertex){c,x1,y1,0};v[1]=(Vertex){c,x2,y2,0};
  sceGuDrawArray(GU_LINES,GU_COLOR_8888|GU_VERTEX_32BITF|GU_TRANSFORM_2D,2,0,v);
 }
 static void circle(float x,float y,float r,unsigned int c){
