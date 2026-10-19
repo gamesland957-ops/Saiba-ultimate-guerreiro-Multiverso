@@ -34,7 +34,8 @@ typedef enum { INTRO_COVER, INTRO_ROMS, INTRO_GC, TITLE, SETTINGS, TRAINING, PLA
 static unsigned int __attribute__((aligned(16))) list[262144];
 static unsigned int __attribute__((aligned(16))) fb0[STRIDE*H];
 static unsigned int __attribute__((aligned(16))) fb1[STRIDE*H];
-static State state=INTRO_COVER;\nstatic int menuIndex=0, settingIndex=0, soundEnabled=1, language=0, introFrames=0;
+static State state=INTRO_COVER;
+static int menuIndex=0, settingIndex=0, soundEnabled=1, language=0, introFrames=0;
 static float sx=112.0f, sy=188.0f, walk=0.0f, attack=0.0f, glow=0.0f;
 static int hp=100, energy=25, tools=5, score=0, mission=1, frame=0, invuln=0;
 static Enemy enemies[5]={{285,190,30,1,0},{355,170,25,1,1},{405,205,35,1,2},{310,130,25,1,3},{210,150,30,1,4}};
