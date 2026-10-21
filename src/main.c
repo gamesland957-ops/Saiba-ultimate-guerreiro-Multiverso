@@ -191,24 +191,76 @@ static void hud(void){
  for(int i=0;i<5;i++)circle(308+i*13,20,4, i<tools?rgba(255,205,73,255):rgba(95,85,75,255));
  for(int i=0;i<5;i++)rect(374+i*15,14,10,10,i<score?rgba(255,180,55,255):rgba(91,77,72,255));
 }
+
+static void portal_ring(float x,float y,float r,unsigned int c){
+ for(int i=0;i<3;i++){
+  float rr=r-(float)i*5.0f;
+  for(int k=0;k<24;k++){
+   float a=(float)k*0.261799f,b=(float)(k+1)*0.261799f;
+   line(x+cosf(a)*rr,y+sinf(a)*rr,x+cosf(b)*rr,y+sinf(b)*rr,c);
+  }
+ }
+}
+static void cover_hero(float x,float y,float s,unsigned int cloth,unsigned int aura,int weapon){
+ circle(x,y-39*s,10*s,rgba(92,52,36,255));
+ circle(x,y-47*s,11*s,rgba(24,19,24,255));
+ rect(x-10*s,y-29*s,20*s,26*s,cloth);
+ tri(x-10*s,y-28*s,x+10*s,y-28*s,x,y-10*s,aura);
+ rect(x-9*s,y-4*s,7*s,18*s,rgba(26,24,32,255));
+ rect(x+2*s,y-4*s,7*s,18*s,rgba(26,24,32,255));
+ rect(x-15*s,y-27*s,6*s,18*s,cloth);
+ rect(x+9*s,y-27*s,6*s,18*s,cloth);
+ line(x-5*s,y-40*s,x-1*s,y-40*s,WHITE);
+ line(x+2*s,y-40*s,x+6*s,y-40*s,WHITE);
+ if(weapon) line(x+11*s,y-28*s,x+24*s,y-57*s,rgba(220,230,245,255));
+ circle(x,y-25*s,17*s,rgba(65,110,255,35));
+}
+static void intro_backdrop(void){
+ rect(0,0,W,H,rgba(8,9,28,255));
+ for(int i=0;i<36;i++){
+  float x=(float)((i*67+19)%480),y=(float)((i*41+13)%170);
+  rect(x,y,2,2,rgba(190,208,255,180));
+ }
+ portal_ring(240,103,83,rgba(66,130,255,175));
+ portal_ring(240,103,65,rgba(180,68,255,160));
+ circle(240,103,49,rgba(255,134,38,45));
+ /* Ensemble de silhuetas para comunicar o elenco multiversal. */
+ cover_hero(34,151,0.76f,rgba(44,80,180,255),rgba(255,195,45,255),0);
+ cover_hero(82,168,0.88f,rgba(38,34,48,255),rgba(220,220,240,255),1);
+ cover_hero(398,162,0.86f,rgba(214,111,30,255),rgba(255,212,78,255),1);
+ cover_hero(447,145,0.72f,rgba(35,120,78,255),rgba(76,221,255,255),1);
+ cover_hero(151,190,0.64f,rgba(115,45,55,255),rgba(255,175,45,255),1);
+ cover_hero(329,188,0.65f,rgba(72,49,110,255),rgba(100,185,255,255),1);
+ for(int i=0;i<6;i++) line(18+i*84,212,42+i*78,192,rgba(255,170,45,70));
+ rect(18,220,444,2,rgba(255,193,55,230));
+}
+
 static void render(void){
  sceGuStart(GU_DIRECT,list);
  sceGuClearColor(rgba(18,16,31,255));sceGuClear(GU_COLOR_BUFFER_BIT);
  village();
  if(state==INTRO_COVER){
-  /* Title splash: the final high-resolution poster is the art reference; this is a PSP-safe interim composition. */
-  rect(0,0,W,H,rgba(10,8,25,190));
-  circle(240,87,66,rgba(255,105,22,70));circle(240,87,48,rgba(38,119,255,100));
-  text5(54,38,"SOBA ULTIMATO",rgba(255,195,48,255),3);
-  text5(48,68,"GUERREIRO MULTIVERSO",WHITE,2);
-  saje(240,178,1,0);
-  text5(120,226,"PRESSIONE X",WHITE,2);
+  intro_backdrop();
+  text5(77,25,"SOBA ULTIMATO",rgba(255,198,54,255),3);
+  text5(76,58,"GUERREIRO MULTIVERSO",WHITE,2);
+  rect(62,83,356,2,rgba(255,198,54,230));
+  saje(240,177,1,0);
+  text5(139,237,"PRESSIONE X",WHITE,2);
  }else if(state==INTRO_ROMS){
-  rect(0,0,W,H,rgba(8,9,18,245));circle(240,119,66,rgba(255,180,20,80));circle(240,119,51,rgba(255,180,20,100));
-  text5(105,93,"GAME PLAY",WHITE,3);text5(151,129,"ROMS",rgba(255,195,48,255),4);
+  rect(0,0,W,H,rgba(5,7,17,255));
+  portal_ring(240,117,68,rgba(255,183,47,180));
+  portal_ring(240,117,54,rgba(255,125,26,140));
+  circle(240,117,40,rgba(255,180,20,32));
+  text5(105,92,"GAME PLAY",WHITE,3);text5(151,130,"ROMS",rgba(255,198,54,255),4);
+  text5(163,204,"APRESENTA",rgba(230,203,135,255),1);
  }else if(state==INTRO_GC){
-  rect(0,0,W,H,rgba(12,9,15,245));text5(111,84,"G C",rgba(255,195,48,255),5);
-  text5(116,143,"COMPANY",WHITE,3);line(100,176,380,176,GOLD);
+  rect(0,0,W,H,rgba(8,7,13,255));
+  portal_ring(240,108,76,rgba(255,190,52,130));
+  circle(240,103,47,rgba(255,190,52,18));
+  text5(153,72,"G C",rgba(255,198,54,255),5);
+  text5(135,137,"COMPANY",WHITE,3);
+  line(100,176,380,176,GOLD);
+  text5(112,193,"PRODUCOES E JOGOS",rgba(218,202,164,255),1);
  }else if(state==TITLE||state==SETTINGS||state==TRAINING){
   rect(10,8,460,36,rgba(16,13,24,235));text5(24,17,"SOBA ULTIMATO",GOLD,2);
   rect(18,55,211,196,rgba(17,14,25,225));saje(118,171,1,0);
