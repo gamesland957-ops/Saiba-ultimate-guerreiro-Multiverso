@@ -12,6 +12,6 @@ PSP_FW_VERSION = 660
 EXTRA_TARGETS = EBOOT.PBP
 PSP_EBOOT_TITLE = Saiba Ultimate: Guerreiro do Multiverso
 
-LIBS = -lpspgu -lpspgum -lpspaudio -lpspdisplay -lpspctrl -lpspkernel -lm
+LIBS = -ljpeg -lpspgu -lpspgum -lpspaudio -lpspdisplay -lpspctrl -lpspkernel -lm
 
 include $(PSPSDK)/lib/build.mak

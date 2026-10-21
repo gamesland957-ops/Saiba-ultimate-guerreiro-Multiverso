@@ -12,6 +12,8 @@
 #include <math.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <jpeglib.h>
 
 PSP_MODULE_INFO("Saiba Ultimate", 0, 1, 0);
 PSP_MAIN_THREAD_ATTR(THREAD_ATTR_USER | THREAD_ATTR_VFPU);
@@ -28,12 +30,56 @@ PSP_MAIN_THREAD_ATTR(THREAD_ATTR_USER | THREAD_ATTR_VFPU);
 #define DIRT 0xff356d9b
 
 typedef struct { unsigned int color; float x,y,z; } Vertex;
+typedef struct { float u,v; unsigned int color; float x,y,z; } TexVertex;
 typedef struct { float x,y; int hp; int alive; int phase; } Enemy;
 typedef enum { INTRO_COVER, INTRO_ROMS, INTRO_GC, TITLE, SETTINGS, TRAINING, PLAY, PORTAL, GAMEOVER } State;
 
 static unsigned int __attribute__((aligned(16))) list[262144];
 static unsigned int __attribute__((aligned(16))) fb0[STRIDE*H];
 static unsigned int __attribute__((aligned(16))) fb1[STRIDE*H];
+
+#define TEX_W 512
+#define TEX_H 512
+static unsigned int __attribute__((aligned(16))) imagePixels[4][TEX_W*TEX_H];
+static int imageLoaded[4]={0,0,0,0};
+static const char *imagePaths[4]={"assets/capa.jpg","assets/game_play_roms.jpg","assets/gc_company.jpg","assets/menu_background.jpg"};
+static int loadJpeg(int id){
+ if(id<0||id>3)return 0;
+ if(imageLoaded[id])return 1;
+ FILE *f=fopen(imagePaths[id],"rb"); if(!f)return 0;
+ struct jpeg_decompress_struct cinfo; struct jpeg_error_mgr jerr;
+ cinfo.err=jpeg_std_error(&jerr); jpeg_create_decompress(&cinfo); jpeg_stdio_src(&cinfo,f);
+ if(jpeg_read_header(&cinfo,TRUE)!=JPEG_HEADER_OK){jpeg_destroy_decompress(&cinfo);fclose(f);return 0;}
+ cinfo.out_color_space=JCS_RGB; jpeg_start_decompress(&cinfo);
+ unsigned int sw=cinfo.output_width, sh=cinfo.output_height;
+ if(sw==0||sh==0||sw>8192||sh>8192){jpeg_destroy_decompress(&cinfo);fclose(f);return 0;}
+ unsigned char *row=(unsigned char*)malloc(sw*3);
+ if(!row){jpeg_destroy_decompress(&cinfo);fclose(f);return 0;}
+ while(cinfo.output_scanline<cinfo.output_height){
+  JSAMPROW rp=row; unsigned int sy=cinfo.output_scanline; jpeg_read_scanlines(&cinfo,&rp,1);
+  unsigned int targetY=(unsigned int)(((unsigned long long)sy*TEX_H)/sh);if(targetY>=TEX_H)targetY=TEX_H-1;
+  for(unsigned int x=0;x<TEX_W;x++){
+   unsigned int sxp=(unsigned int)(((unsigned long long)x*sw)/TEX_W);if(sxp>=sw)sxp=sw-1;
+   unsigned char *p=&row[sxp*3];
+   imagePixels[id][targetY*TEX_W+x]=(unsigned int)p[0]|((unsigned int)p[1]<<8)|((unsigned int)p[2]<<16)|0xff000000u;
+  }
+ }
+ free(row);jpeg_finish_decompress(&cinfo);jpeg_destroy_decompress(&cinfo);fclose(f);
+ imageLoaded[id]=1;return 1;
+}
+static void imageBackground(int id){
+ if(!loadJpeg(id))return;
+ sceGuEnable(GU_TEXTURE_2D);sceGuTexMode(GU_PSM_8888,0,0,0);
+ sceGuTexImage(0,TEX_W,TEX_H,TEX_W,imagePixels[id]);
+ sceGuTexFunc(GU_TFX_REPLACE,GU_TCC_RGBA);sceGuTexFilter(GU_LINEAR,GU_LINEAR);
+ TexVertex *v=(TexVertex*)sceGuGetMemory(4*sizeof(TexVertex));
+ v[0]=(TexVertex){0,0,0xffffffff,0,0,0};
+ v[1]=(TexVertex){0,(float)H,0xffffffff,0,(float)H,0};
+ v[2]=(TexVertex){(float)W,0,0xffffffff,(float)W,0,0};
+ v[3]=(TexVertex){(float)W,(float)H,0xffffffff,(float)W,(float)H,0};
+ sceGuDrawArray(GU_TRIANGLE_STRIP,GU_TEXTURE_32BITF|GU_COLOR_8888|GU_VERTEX_32BITF|GU_TRANSFORM_2D,4,0,v);
+ sceGuDisable(GU_TEXTURE_2D);
+}
 static State state=INTRO_COVER;
 static int menuIndex=0, settingIndex=0, soundEnabled=1, language=0, introFrames=0;
 static float sx=112.0f, sy=188.0f, walk=0.0f, attack=0.0f, glow=0.0f;
@@ -238,29 +284,17 @@ static void intro_backdrop(void){
 static void render(void){
  sceGuStart(GU_DIRECT,list);
  sceGuClearColor(rgba(18,16,31,255));sceGuClear(GU_COLOR_BUFFER_BIT);
- village();
+ if(state==INTRO_COVER){imageBackground(0);text5(139,237,"PRESSIONE X",WHITE,2);}
+ else if(state==INTRO_ROMS){imageBackground(1);}
+ else if(state==INTRO_GC){imageBackground(2);}
+ else if(state==TITLE||state==SETTINGS||state==TRAINING){imageBackground(3);}
+ else village();
  if(state==INTRO_COVER){
-  intro_backdrop();
-  text5(77,25,"SOBA ULTIMATO",rgba(255,198,54,255),3);
-  text5(76,58,"GUERREIRO MULTIVERSO",WHITE,2);
-  rect(62,83,356,2,rgba(255,198,54,230));
-  saje(240,177,1,0);
-  text5(139,237,"PRESSIONE X",WHITE,2);
+
  }else if(state==INTRO_ROMS){
-  rect(0,0,W,H,rgba(5,7,17,255));
-  portal_ring(240,117,68,rgba(255,183,47,180));
-  portal_ring(240,117,54,rgba(255,125,26,140));
-  circle(240,117,40,rgba(255,180,20,32));
-  text5(105,92,"GAME PLAY",WHITE,3);text5(151,130,"ROMS",rgba(255,198,54,255),4);
-  text5(163,204,"APRESENTA",rgba(230,203,135,255),1);
+
  }else if(state==INTRO_GC){
-  rect(0,0,W,H,rgba(8,7,13,255));
-  portal_ring(240,108,76,rgba(255,190,52,130));
-  circle(240,103,47,rgba(255,190,52,18));
-  text5(153,72,"G C",rgba(255,198,54,255),5);
-  text5(135,137,"COMPANY",WHITE,3);
-  line(100,176,380,176,GOLD);
-  text5(112,193,"PRODUCOES E JOGOS",rgba(218,202,164,255),1);
+
  }else if(state==TITLE||state==SETTINGS||state==TRAINING){
   rect(10,8,460,36,rgba(16,13,24,235));text5(24,17,"SOBA ULTIMATO",GOLD,2);
   rect(18,55,211,196,rgba(17,14,25,225));saje(118,171,1,0);

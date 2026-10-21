@@ -20,9 +20,16 @@ jobs:
         uses: actions/checkout@v4
       - name: Compile PSP executable
         run: make clean && make
-      - name: Publish EBOOT.PBP artifact
+      - name: Package game and opening artwork
+        run: |
+          mkdir -p release/assets
+          cp EBOOT.PBP release/
+          cp assets/*.jpg release/assets/
+          cd release
+          zip -r ../SaibaUltimate-PSP.zip .
+      - name: Publish PSP package artifact
         uses: actions/upload-artifact@v4
         with:
           name: SaibaUltimate-PSP
-          path: EBOOT.PBP
+          path: SaibaUltimate-PSP.zip
           if-no-files-found: error
