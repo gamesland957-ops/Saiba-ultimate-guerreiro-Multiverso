@@ -279,7 +279,7 @@ static void render(void){
    text5(258,224,"O VOLTAR",GOLD,1);
    rect(250,settingIndex==0?94:settingIndex==1?130:166,204,23,rgba(151,90,20,100));
   }else{
-   text5(261,68,"TREINAMENTO",GOLD,2);text5(258,112,"BATALHA NA ARENA",WHITE,1);text5(258,142,"X INICIAR",WHITE,1);text5(258,224,"O VOLTAR",GOLD,1);
+   text5(261,52,"CAMPO DE TREINAMENTO",GOLD,1);text5(258,91,"BATALHA NA ARENA",WHITE,1);text5(258,122,"X INICIAR",WHITE,1);text5(258,224,"O VOLTAR",GOLD,1);
   }
  }else if(state==PORTAL){
   circle(397,117,35,rgba(31,130,255,55));circle(397,117,27,rgba(39,170,255,120));circle(397,117,18,rgba(89,214,255,190));rect(393,88,8,59,rgba(190,242,255,210));
@@ -330,7 +330,7 @@ int main(void){
   }else if(state==SETTINGS){
    if(pressed&(PSP_CTRL_UP|PSP_CTRL_LEFT))settingIndex=(settingIndex+2)%3;
    if(pressed&(PSP_CTRL_DOWN|PSP_CTRL_RIGHT))settingIndex=(settingIndex+1)%3;
-   if(pressed&PSP_CTRL_CROSS){if(settingIndex==0)language=!language;else soundEnabled=!soundEnabled;}
+   if(pressed&PSP_CTRL_CROSS){if(settingIndex==0)language=!language;else if(settingIndex==1)soundEnabled=!soundEnabled;else soundEnabled=!soundEnabled;}
    if(pressed&PSP_CTRL_CIRCLE)state=TITLE;
   }else if(state==TRAINING||state==PLAY){
    float dx=0,dy=0;
