@@ -25,11 +25,10 @@ jobs:
           mkdir -p release/assets
           cp EBOOT.PBP release/
           cp assets/*.jpg release/assets/
-          cd release
-          zip -r ../SaibaUltimate-PSP.zip .
+          tar -czf SaibaUltimate-PSP.tar.gz -C release .
       - name: Publish PSP package artifact
         uses: actions/upload-artifact@v4
         with:
           name: SaibaUltimate-PSP
-          path: SaibaUltimate-PSP.zip
+          path: SaibaUltimate-PSP.tar.gz
           if-no-files-found: error
