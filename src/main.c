@@ -56,18 +56,39 @@ static int loadJpeg(int id){
  unsigned int sw=cinfo.output_width, sh=cinfo.output_height;
  if(sw==0||sh==0||sw>8192||sh>8192){jpeg_destroy_decompress(&cinfo);fclose(f);return 0;}
  imageSourceW[id]=sw; imageSourceH[id]=sh;
- unsigned char *row=(unsigned char*)malloc(sw*3);
- if(!row){jpeg_destroy_decompress(&cinfo);fclose(f);return 0;}
+ /* Descodificar a imagem completa antes de redimensionar, para permitir interpolacao bilinear. */
+ size_t srcBytes=(size_t)sw*(size_t)sh*3u;
+ if(srcBytes>12000000u){jpeg_destroy_decompress(&cinfo);fclose(f);return 0;}
+ unsigned char *src=(unsigned char*)malloc(srcBytes);
+ if(!src){jpeg_destroy_decompress(&cinfo);fclose(f);return 0;}
  while(cinfo.output_scanline<cinfo.output_height){
-  JSAMPROW rp=row; unsigned int sy=cinfo.output_scanline; jpeg_read_scanlines(&cinfo,&rp,1);
-  unsigned int targetY=(unsigned int)(((unsigned long long)sy*TEX_H)/sh);if(targetY>=TEX_H)targetY=TEX_H-1;
+  JSAMPROW rp=src+(size_t)cinfo.output_scanline*(size_t)sw*3u;
+  jpeg_read_scanlines(&cinfo,&rp,1);
+ }
+ jpeg_finish_decompress(&cinfo);jpeg_destroy_decompress(&cinfo);fclose(f);
+ for(unsigned int y=0;y<TEX_H;y++){
+  float fy=((float)y+0.5f)*(float)sh/(float)TEX_H-0.5f;
+  if(fy<0)fy=0; if(fy>(float)(sh-1))fy=(float)(sh-1);
+  unsigned int y0=(unsigned int)fy, y1=(y0+1<sh)?y0+1:y0; float wy=fy-(float)y0;
   for(unsigned int x=0;x<TEX_W;x++){
-   unsigned int sxp=(unsigned int)(((unsigned long long)x*sw)/TEX_W);if(sxp>=sw)sxp=sw-1;
-   unsigned char *p=&row[sxp*3];
-   imagePixels[id][targetY*TEX_W+x]=(unsigned int)p[0]|((unsigned int)p[1]<<8)|((unsigned int)p[2]<<16)|0xff000000u;
+   float fx=((float)x+0.5f)*(float)sw/(float)TEX_W-0.5f;
+   if(fx<0)fx=0; if(fx>(float)(sw-1))fx=(float)(sw-1);
+   unsigned int x0=(unsigned int)fx, x1=(x0+1<sw)?x0+1:x0; float wx=fx-(float)x0;
+   const unsigned char *p00=src+((size_t)y0*sw+x0)*3u;
+   const unsigned char *p10=src+((size_t)y0*sw+x1)*3u;
+   const unsigned char *p01=src+((size_t)y1*sw+x0)*3u;
+   const unsigned char *p11=src+((size_t)y1*sw+x1)*3u;
+   unsigned int rgb[3];
+   for(int k=0;k<3;k++){
+    float a=(float)p00[k]*(1.0f-wx)+(float)p10[k]*wx;
+    float b=(float)p01[k]*(1.0f-wx)+(float)p11[k]*wx;
+    int value=(int)(a*(1.0f-wy)+b*wy+0.5f);
+    if(value<0)value=0;if(value>255)value=255;rgb[k]=(unsigned int)value;
+   }
+   imagePixels[id][y*TEX_W+x]=rgb[0]|(rgb[1]<<8)|(rgb[2]<<16)|0xff000000u;
   }
  }
- free(row);jpeg_finish_decompress(&cinfo);jpeg_destroy_decompress(&cinfo);fclose(f);
+ free(src);
  imageLoaded[id]=1;return 1;
 }
 static void imageBackground(int id){
