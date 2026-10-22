@@ -180,14 +180,28 @@ static const unsigned char font5x7[38][7]={
 {14,16,16,30,17,17,14},{31,1,2,4,8,8,8},{14,17,17,14,17,17,14},
 {14,17,17,15,1,1,14},{0,0,0,31,0,0,0},{0,4,4,0,4,4,0}
 };
-static void text5(int x,int y,const char *str,unsigned int color,int scale){
+static void text5Layer(int x,int y,const char *str,unsigned int color,int scale){
  for(;*str;str++,x+=6*scale){
-  char c=*str;if(c>='a'&&c<='z')c-=32;
+  unsigned char c=(unsigned char)*str;
+  if(c>='a'&&c<='z')c=(unsigned char)(c-32);
   int idx=-1;
-  if(c>='A'&&c<='Z')idx=c-'A';else if(c>='0'&&c<='9')idx=26+c-'0';else if(c=='-')idx=36;else if(c==':')idx=37;
+  if(c>='A'&&c<='Z')idx=c-'A';
+  else if(c>='0'&&c<='9')idx=26+c-'0';
+  else if(c=='-')idx=36;
+  else if(c==':')idx=37;
+  else if(c=='.')idx=36;
   if(idx<0)continue;
-  for(int row=0;row<7;row++)for(int col=0;col<5;col++)if(font5x7[idx][row]&(1<<(4-col)))rect(x+col*scale,y+row*scale,scale,scale,color);
+  for(int row=0;row<7;row++)for(int col=0;col<5;col++){
+   if(font5x7[idx][row]&(1<<(4-col)))
+    rect(x+col*scale,y+row*scale,scale,scale,color);
+  }
  }
+}
+/* Typography pass: a dark offset shadow improves legibility over illustrated
+   backgrounds while retaining the lightweight PSP GU renderer. */
+static void text5(int x,int y,const char *str,unsigned int color,int scale){
+ text5Layer(x+1,y+2,str,rgba(5,4,10,220),scale);
+ text5Layer(x,y,str,color,scale);
 }
 
 static void village(void){
@@ -327,24 +341,46 @@ static void render(void){
  }else if(state==INTRO_GC){
 
  }else if(state==TITLE||state==SETTINGS||state==TRAINING){
-  rect(10,8,460,36,rgba(16,13,24,235));text5(24,17,"SOBA ULTIMATO",GOLD,2);
-  rect(18,55,211,196,rgba(17,14,25,225));saje(118,171,1,0);
-  text5(29,207,"SAJE CAPANJI",WHITE,1);
-  rect(242,54,220,198,rgba(16,13,24,235));
+  /* Molduras e acentos dourados para aproximar o menu do conceito visual. */
+  rect(8,7,464,38,rgba(8,7,15,238));
+  rect(8,7,464,2,rgba(224,166,61,240));
+  rect(8,43,464,2,rgba(116,74,28,220));
+  text5(24,17,"SOBA ULTIMATO",GOLD,2);
+  rect(18,55,211,196,rgba(12,10,20,232));
+  rect(18,55,211,2,rgba(205,145,48,225));
+  saje(118,171,1,0);
+  rect(28,202,191,25,rgba(8,7,14,225));
+  text5(39,211,"SAJE CAPANJI",WHITE,1);
+  rect(242,54,220,198,rgba(12,10,20,240));
+  rect(242,54,220,2,rgba(205,145,48,225));
   if(state==TITLE){
-   text5(265,66,"MENU PRINCIPAL",GOLD,2);
-   const char *items[5]={"NOVO JOGO","CONTINUAR","CAMPO DE","MISSAO","DEFINICAO"};
-   for(int i=0;i<5;i++){int y=96+i*29;rect(253,y-5,196,24,i==menuIndex?rgba(153,91,21,245):rgba(40,35,48,220));if(i==menuIndex)rect(253,y-5,4,24,GOLD);text5(266,y,items[i],WHITE,1);}
+   text5(258,65,"MENU PRINCIPAL",GOLD,2);
+   rect(257,82,190,1,rgba(205,145,48,170));
+   const char *items[5]={"NOVO JOGO","CONTINUAR","CAMPO TREINO","MISSAO","DEFINICAO"};
+   for(int i=0;i<5;i++){
+    int y=91+i*28;
+    rect(253,y-3,196,23,i==menuIndex?rgba(128,76,20,248):rgba(35,30,43,232));
+    if(i==menuIndex){
+     rect(253,y-3,4,23,GOLD);
+     rect(259,y-3,190,1,rgba(255,211,112,210));
+    }else rect(259,y+19,190,1,rgba(92,69,47,140));
+    text5(266,y+3,items[i],i==menuIndex?GOLD:WHITE,1);
+   }
    text5(257,235,"X CONFIRMAR",GOLD,1);
   }else if(state==SETTINGS){
    text5(262,66,"DEFINICAO",GOLD,2);
+   rect(253,89,195,1,rgba(205,145,48,170));
    text5(258,103,language?"IDIOMA: EN":"IDIOMA: PT",WHITE,1);
    text5(258,139,soundEnabled?"SOM: LIGADO":"SOM: DESLIGADO",WHITE,1);
    text5(258,175,"EFEITOS SONOROS",WHITE,1);
+   rect(250,settingIndex==0?96:settingIndex==1?132:168,204,21,rgba(151,90,20,100));
    text5(258,224,"O VOLTAR",GOLD,1);
-   rect(250,settingIndex==0?94:settingIndex==1?130:166,204,23,rgba(151,90,20,100));
   }else{
-   text5(261,52,"CAMPO DE TREINAMENTO",GOLD,1);text5(258,91,"BATALHA NA ARENA",WHITE,1);text5(258,122,"X INICIAR",WHITE,1);text5(258,224,"O VOLTAR",GOLD,1);
+   text5(252,52,"CAMPO DE TREINO",GOLD,1);
+   rect(253,72,195,1,rgba(205,145,48,170));
+   text5(258,91,"BATALHA NA ARENA",WHITE,1);
+   text5(258,122,"X INICIAR",GOLD,1);
+   text5(258,224,"O VOLTAR",GOLD,1);
   }
  }else if(state==PORTAL){
   circle(397,117,35,rgba(31,130,255,55));circle(397,117,27,rgba(39,170,255,120));circle(397,117,18,rgba(89,214,255,190));rect(393,88,8,59,rgba(190,242,255,210));
