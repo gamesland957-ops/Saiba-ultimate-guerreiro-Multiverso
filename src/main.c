@@ -42,6 +42,8 @@ static unsigned int __attribute__((aligned(16))) fb1[STRIDE*H];
 #define TEX_H 512
 static unsigned int __attribute__((aligned(16))) imagePixels[4][TEX_W*TEX_H];
 static int imageLoaded[4]={0,0,0,0};
+static unsigned int imageSourceW[4]={480,480,480,480};
+static unsigned int imageSourceH[4]={272,272,272,272};
 static const char *imagePaths[4]={"assets/capa.jpg","assets/game_play_roms.jpg","assets/gc_company.jpg","assets/menu_background.jpg"};
 static int loadJpeg(int id){
  if(id<0||id>3)return 0;
@@ -53,6 +55,7 @@ static int loadJpeg(int id){
  cinfo.out_color_space=JCS_RGB; jpeg_start_decompress(&cinfo);
  unsigned int sw=cinfo.output_width, sh=cinfo.output_height;
  if(sw==0||sh==0||sw>8192||sh>8192){jpeg_destroy_decompress(&cinfo);fclose(f);return 0;}
+ imageSourceW[id]=sw; imageSourceH[id]=sh;
  unsigned char *row=(unsigned char*)malloc(sw*3);
  if(!row){jpeg_destroy_decompress(&cinfo);fclose(f);return 0;}
  while(cinfo.output_scanline<cinfo.output_height){
@@ -72,11 +75,18 @@ static void imageBackground(int id){
  sceGuEnable(GU_TEXTURE_2D);sceGuTexMode(GU_PSM_8888,0,0,0);
  sceGuTexImage(0,TEX_W,TEX_H,TEX_W,imagePixels[id]);
  sceGuTexFunc(GU_TFX_REPLACE,GU_TCC_RGBA);sceGuTexFilter(GU_LINEAR,GU_LINEAR);
+ /* Ajustar a imagem ao ecrã sem deformar: preservar a proporção original.
+    As imagens mais estreitas ficam centradas; as mais largas mantêm barras discretas. */
+ float aspect=(float)imageSourceW[id]/(float)imageSourceH[id];
+ float dw=(float)W, dh=dw/aspect;
+ if(dh>(float)H){dh=(float)H;dw=dh*aspect;}
+ float x=((float)W-dw)*0.5f, y=((float)H-dh)*0.5f;
  TexVertex *v=(TexVertex*)sceGuGetMemory(4*sizeof(TexVertex));
- v[0]=(TexVertex){0,0,0xffffffff,0,0,0};
- v[1]=(TexVertex){0,(float)H,0xffffffff,0,(float)H,0};
- v[2]=(TexVertex){(float)W,0,0xffffffff,(float)W,0,0};
- v[3]=(TexVertex){(float)W,(float)H,0xffffffff,(float)W,(float)H,0};
+ /* A textura interna ocupa 512x512; usar todo o UV para evitar corte acidental. */
+ v[0]=(TexVertex){0,0,0xffffffff,x,y,0};
+ v[1]=(TexVertex){0,(float)TEX_H,0xffffffff,x,y+dh,0};
+ v[2]=(TexVertex){(float)TEX_W,0,0xffffffff,x+dw,y,0};
+ v[3]=(TexVertex){(float)TEX_W,(float)TEX_H,0xffffffff,x+dw,y+dh,0};
  sceGuDrawArray(GU_TRIANGLE_STRIP,GU_TEXTURE_32BITF|GU_COLOR_8888|GU_VERTEX_32BITF|GU_TRANSFORM_2D,4,0,v);
  sceGuDisable(GU_TEXTURE_2D);
 }
