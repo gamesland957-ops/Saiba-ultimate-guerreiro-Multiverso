@@ -365,7 +365,7 @@ static void render(void){
   if(state==TITLE){
    text5(258,65,"MENU PRINCIPAL",GOLD,2);
    rect(257,82,190,1,rgba(205,145,48,170));
-   const char *items[5]={"NOVO JOGO","CONTINUAR","CAMPO TREINO","MISSAO","DEFINICAO"};
+   const char *items[5]={"NOVO JOGO","CONTINUAR","CAMPO DE TREINO","MISSOES","DEFINICOES"};
    for(int i=0;i<5;i++){
     int y=91+i*28;
     rect(253,y-3,196,23,i==menuIndex?rgba(128,76,20,248):rgba(35,30,43,232));
@@ -377,11 +377,11 @@ static void render(void){
    }
    text5(257,235,"X CONFIRMAR",GOLD,1);
   }else if(state==SETTINGS){
-   text5(262,66,"DEFINICAO",GOLD,2);
+   text5(262,66,"DEFINICOES",GOLD,2);
    rect(253,89,195,1,rgba(205,145,48,170));
    text5(258,103,language?"IDIOMA: EN":"IDIOMA: PT",WHITE,1);
    text5(258,139,soundEnabled?"SOM: LIGADO":"SOM: DESLIGADO",WHITE,1);
-   text5(258,175,"EFEITOS SONOROS",WHITE,1);
+   text5(258,175,"EFEITOS SONOROS: CONFIGURAR",WHITE,1);
    rect(250,settingIndex==0?96:settingIndex==1?132:168,204,21,rgba(151,90,20,100));
    text5(258,224,"O VOLTAR",GOLD,1);
   }else{
