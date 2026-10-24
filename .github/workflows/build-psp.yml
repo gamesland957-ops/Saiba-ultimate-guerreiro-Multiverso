@@ -18,6 +18,57 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
+      - name: Verify opening images are 480x272
+        run: |
+          python3 - <<'PY'
+          import pathlib, struct, sys
+          files = [
+              "assets/capa.jpg",
+              "assets/game_play_roms.jpg",
+              "assets/gc_company.jpg",
+              "assets/menu_background.jpg",
+          ]
+          sof = {0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7, 0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF}
+          def dimensions(path):
+              data = pathlib.Path(path).read_bytes()
+              if data[:2] != b"\xff\xd8":
+                  raise ValueError("not a JPEG")
+              i = 2
+              while i < len(data):
+                  while i < len(data) and data[i] != 0xFF:
+                      i += 1
+                  while i < len(data) and data[i] == 0xFF:
+                      i += 1
+                  if i >= len(data):
+                      break
+                  marker = data[i]
+                  i += 1
+                  if marker in (0xD8, 0xD9) or 0xD0 <= marker <= 0xD7 or marker == 0x01:
+                      continue
+                  if i + 2 > len(data):
+                      break
+                  length = struct.unpack(">H", data[i:i+2])[0]
+                  if length < 2 or i + length > len(data):
+                      break
+                  if marker in sof:
+                      h, w = struct.unpack(">HH", data[i+3:i+7])
+                      return w, h
+                  i += length
+              raise ValueError("JPEG dimensions not found")
+          failed = False
+          for path in files:
+              try:
+                  w, h = dimensions(path)
+                  print(f"{path}: {w}x{h}")
+                  if (w, h) != (480, 272):
+                      print(f"ERROR: expected 480x272 in {path}", file=sys.stderr)
+                      failed = True
+              except Exception as exc:
+                  print(f"ERROR: {path}: {exc}", file=sys.stderr)
+                  failed = True
+          if failed:
+              sys.exit(1)
+          PY
       - name: Compile PSP executable
         run: make clean && make
       - name: Package game and opening artwork
