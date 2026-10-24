@@ -44,6 +44,8 @@ static unsigned int __attribute__((aligned(16))) imagePixels[4][TEX_W*TEX_H];
 static int imageLoaded[4]={0,0,0,0};
 static unsigned int imageSourceW[4]={480,480,480,480};
 static unsigned int imageSourceH[4]={272,272,272,272};
+static unsigned int imageTexW[4]={512,512,512,512};
+static unsigned int imageTexH[4]={290,290,290,290};
 static const char *imagePaths[4]={"assets/capa.jpg","assets/game_play_roms.jpg","assets/gc_company.jpg","assets/menu_background.jpg"};
 static int loadJpeg(int id){
  if(id<0||id>3)return 0;
@@ -66,14 +68,20 @@ static int loadJpeg(int id){
   jpeg_read_scanlines(&cinfo,&rp,1);
  }
  jpeg_finish_decompress(&cinfo);jpeg_destroy_decompress(&cinfo);fclose(f);
- for(unsigned int y=0;y<TEX_H;y++){
-  float fy=((float)y+0.5f)*(float)sh/(float)TEX_H-0.5f;
-  if(fy<0)fy=0; if(fy>(float)(sh-1))fy=(float)(sh-1);
-  unsigned int y0=(unsigned int)fy, y1=(y0+1<sh)?y0+1:y0; float wy=fy-(float)y0;
-  for(unsigned int x=0;x<TEX_W;x++){
-   float fx=((float)x+0.5f)*(float)sw/(float)TEX_W-0.5f;
-   if(fx<0)fx=0; if(fx>(float)(sw-1))fx=(float)(sw-1);
-   unsigned int x0=(unsigned int)fx, x1=(x0+1<sw)?x0+1:x0; float wx=fx-(float)x0;
+ /* Preserve artwork ratio in the PSP power-of-two texture; avoid vertical stretching. */
+ unsigned int tw=TEX_W, th=(unsigned int)(((unsigned long long)TEX_W*(unsigned long long)sh+(unsigned long long)sw/2u)/(unsigned long long)sw);
+ if(th==0)th=1;
+ if(th>TEX_H){th=TEX_H;tw=(unsigned int)(((unsigned long long)TEX_H*(unsigned long long)sw+(unsigned long long)sh/2u)/(unsigned long long)sh);}
+ imageTexW[id]=tw;imageTexH[id]=th;
+ for(unsigned int i=0;i<TEX_W*TEX_H;i++)imagePixels[id][i]=0xff080810u;
+ for(unsigned int y=0;y<th;y++){
+  float fy=((float)y+0.5f)*(float)sh/(float)th-0.5f;
+  if(fy<0)fy=0;if(fy>(float)(sh-1))fy=(float)(sh-1);
+  unsigned int y0=(unsigned int)fy,y1=(y0+1<sh)?y0+1:y0;float wy=fy-(float)y0;
+  for(unsigned int x=0;x<tw;x++){
+   float fx=((float)x+0.5f)*(float)sw/(float)tw-0.5f;
+   if(fx<0)fx=0;if(fx>(float)(sw-1))fx=(float)(sw-1);
+   unsigned int x0=(unsigned int)fx,x1=(x0+1<sw)?x0+1:x0;float wx=fx-(float)x0;
    const unsigned char *p00=src+((size_t)y0*sw+x0)*3u;
    const unsigned char *p10=src+((size_t)y0*sw+x1)*3u;
    const unsigned char *p01=src+((size_t)y1*sw+x0)*3u;
@@ -88,6 +96,7 @@ static int loadJpeg(int id){
    imagePixels[id][y*TEX_W+x]=rgb[0]|(rgb[1]<<8)|(rgb[2]<<16)|0xff000000u;
   }
  }
+ sceKernelDcacheWritebackRange(imagePixels[id],sizeof(imagePixels[id]));
  free(src);
  imageLoaded[id]=1;return 1;
 }
@@ -105,9 +114,9 @@ static void imageBackground(int id){
  TexVertex *v=(TexVertex*)sceGuGetMemory(4*sizeof(TexVertex));
  /* A textura interna ocupa 512x512; usar todo o UV para evitar corte acidental. */
  v[0]=(TexVertex){0,0,0xffffffff,x,y,0};
- v[1]=(TexVertex){0,(float)TEX_H,0xffffffff,x,y+dh,0};
- v[2]=(TexVertex){(float)TEX_W,0,0xffffffff,x+dw,y,0};
- v[3]=(TexVertex){(float)TEX_W,(float)TEX_H,0xffffffff,x+dw,y+dh,0};
+ v[1]=(TexVertex){0,(float)imageTexH[id],0xffffffff,x,y+dh,0};
+ v[2]=(TexVertex){(float)imageTexW[id],0,0xffffffff,x+dw,y,0};
+ v[3]=(TexVertex){(float)imageTexW[id],(float)imageTexH[id],0xffffffff,x+dw,y+dh,0};
  sceGuDrawArray(GU_TRIANGLE_STRIP,GU_TEXTURE_32BITF|GU_COLOR_8888|GU_VERTEX_32BITF|GU_TRANSFORM_2D,4,0,v);
  sceGuDisable(GU_TEXTURE_2D);
 }
