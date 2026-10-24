@@ -1,0 +1,40 @@
+name: Build PSP game
+
+on:
+  push:
+    branches:
+      - main
+      - "dev/**"
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: pspdev/pspdev:latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+      - name: Check opening images exist
+        run: |
+          for image in assets/capa.jpg assets/game_play_roms.jpg assets/gc_company.jpg assets/menu_background.jpg; do
+            test -s "$image" || { echo "Missing or empty image: $image"; exit 1; }
+          done
+          echo "All four opening images are present."
+      - name: Compile PSP executable
+        run: make clean && make
+      - name: Package game and opening artwork
+        run: |
+          mkdir -p release/assets
+          cp EBOOT.PBP release/
+          cp assets/*.jpg release/assets/
+          tar -czf SaibaUltimate-PSP.tar.gz -C release .
+      - name: Publish PSP package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SaibaUltimate-PSP
+          path: SaibaUltimate-PSP.tar.gz
+          if-no-files-found: error
