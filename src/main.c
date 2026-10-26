@@ -351,38 +351,43 @@ static void render(void){
 
  }else if(state==TITLE||state==SETTINGS||state==TRAINING){
   /* Molduras e acentos dourados para aproximar o menu do conceito visual. */
-  rect(8,7,464,38,rgba(8,7,15,238));
-  rect(8,7,464,2,rgba(224,166,61,240));
-  rect(8,43,464,2,rgba(116,74,28,220));
-  text5(24,17,"SOBA ULTIMATO",GOLD,2);
-  rect(18,55,211,196,rgba(12,10,20,232));
+  /* Menu inspirado na referencia: arte livre a esquerda, painel de selecao dourado a direita. */
+  rect(7,7,466,31,rgba(8,7,15,205));
+  rect(7,7,466,2,rgba(224,166,61,240));
+  text5(18,16,"SOBA ULTIMATO",GOLD,2);
+  text5(18,29,"GUERREIRO MULTIVERSO",WHITE,1);
+  rect(18,55,211,177,rgba(12,10,20,125));
   rect(18,55,211,2,rgba(205,145,48,225));
   saje(118,171,1,0);
-  rect(28,202,191,25,rgba(8,7,14,225));
+  rect(28,202,191,25,rgba(8,7,14,205));
   text5(39,211,"SAJE CAPANJI",WHITE,1);
-  rect(242,54,220,198,rgba(12,10,20,240));
-  rect(242,54,220,2,rgba(205,145,48,225));
+  rect(242,45,230,188,rgba(7,6,13,220));
+  rect(242,45,230,2,rgba(205,145,48,240));
   if(state==TITLE){
-   text5(258,65,"MENU PRINCIPAL",GOLD,2);
-   rect(257,82,190,1,rgba(205,145,48,170));
-   const char *items[5]={"NOVO JOGO","CONTINUAR","CAMPO DE TREINO","MISSOES","DEFINICOES"};
+   text5(254,54,"MENU PRINCIPAL",GOLD,2);
+   rect(253,72,207,1,rgba(205,145,48,190));
+   const char *items[5]={"NOVO JOGO","CONTINUAR","CAMPO DE TREINO","MISSAO...","DEFINICOES"};
    for(int i=0;i<5;i++){
-    int y=91+i*28;
-    rect(253,y-3,196,23,i==menuIndex?rgba(128,76,20,248):rgba(35,30,43,232));
+    int y=81+i*27;
+    rect(250,y-3,214,23,i==menuIndex?rgba(157,91,18,245):rgba(25,22,31,215));
     if(i==menuIndex){
-     rect(253,y-3,4,23,GOLD);
-     rect(259,y-3,190,1,rgba(255,211,112,210));
-    }else rect(259,y+19,190,1,rgba(92,69,47,140));
-    text5(266,y+3,items[i],i==menuIndex?GOLD:WHITE,1);
+     tri(252,y+8,260,y,y+16,GOLD);
+     rect(263,y-3,2,23,GOLD);
+     rect(267,y-3,194,1,rgba(255,211,112,210));
+    }else rect(267,y+19,194,1,rgba(92,69,47,140));
+    text5(274,y+3,items[i],i==menuIndex?GOLD:WHITE,1);
    }
-   text5(257,235,"X CONFIRMAR",GOLD,1);
+   rect(0,239,480,33,rgba(5,5,10,225));
+   text5(15,251,"X CONFIRMAR",WHITE,1);
+   text5(170,251,"O VOLTAR",WHITE,1);
+   text5(302,251,"TRIANGULO MENU",GOLD,1);
   }else if(state==SETTINGS){
    text5(262,66,"DEFINICOES",GOLD,2);
    rect(253,89,195,1,rgba(205,145,48,170));
+   rect(250,settingIndex==0?96:settingIndex==1?132:168,204,21,rgba(151,90,20,100));
    text5(258,103,language?"IDIOMA: EN":"IDIOMA: PT",WHITE,1);
    text5(258,139,soundEnabled?"SOM: LIGADO":"SOM: DESLIGADO",WHITE,1);
-   text5(258,175,"EFEITOS SONOROS: CONFIGURAR",WHITE,1);
-   rect(250,settingIndex==0?96:settingIndex==1?132:168,204,21,rgba(151,90,20,100));
+   text5(258,175,"EFEITOS SONOROS",WHITE,1);
    text5(258,224,"O VOLTAR",GOLD,1);
   }else{
    text5(252,52,"CAMPO DE TREINO",GOLD,1);
@@ -429,7 +434,7 @@ int main(void){
   else if(state==TITLE){
    if(pressed&(PSP_CTRL_UP|PSP_CTRL_LEFT)){menuIndex=(menuIndex+4)%5;sound(0);}
    if(pressed&(PSP_CTRL_DOWN|PSP_CTRL_RIGHT)){menuIndex=(menuIndex+1)%5;sound(0);}
-   if(pressed&PSP_CTRL_CIRCLE){state=TITLE;menuIndex=0;}
+   if(pressed&(PSP_CTRL_CIRCLE|PSP_CTRL_TRIANGLE)){state=TITLE;menuIndex=0;}
    if(pressed&PSP_CTRL_CROSS){
     if(menuIndex==0){reset_game();}
     else if(menuIndex==1){reset_game();} /* save-data system will replace this temporary fallback */
@@ -441,7 +446,7 @@ int main(void){
    if(pressed&(PSP_CTRL_UP|PSP_CTRL_LEFT))settingIndex=(settingIndex+2)%3;
    if(pressed&(PSP_CTRL_DOWN|PSP_CTRL_RIGHT))settingIndex=(settingIndex+1)%3;
    if(pressed&PSP_CTRL_CROSS){if(settingIndex==0)language=!language;else if(settingIndex==1)soundEnabled=!soundEnabled;else soundEnabled=!soundEnabled;}
-   if(pressed&PSP_CTRL_CIRCLE)state=TITLE;
+   if(pressed&(PSP_CTRL_CIRCLE|PSP_CTRL_TRIANGLE))state=TITLE;
   }else if(state==TRAINING||state==PLAY){
    float dx=0,dy=0;
    if(pad.Buttons&PSP_CTRL_LEFT)dx=-1;if(pad.Buttons&PSP_CTRL_RIGHT)dx=1;
