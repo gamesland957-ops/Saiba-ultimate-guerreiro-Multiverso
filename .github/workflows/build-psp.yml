@@ -20,17 +20,17 @@ jobs:
         uses: actions/checkout@v4
       - name: Check opening images exist
         run: |
-          for image in assets/capa.jpg assets/game_play_roms.jpg assets/gc_company.jpg assets/menu_background.jpg; do
+          for image in assets/capa.jpg assets/game_play_roms.jpg assets/gc_company.jpg assets/menus/menu_background_480x272.jpg; do
             test -s "$image" || { echo "Missing or empty image: $image"; exit 1; }
           done
-          echo "All four opening images are present."
+          echo "All required opening and menu images are present."
       - name: Compile PSP executable
         run: make clean && make
       - name: Package game and opening artwork
         run: |
           mkdir -p release/assets
           cp EBOOT.PBP release/
-          cp assets/*.jpg release/assets/
+          cp -R assets/. release/assets/
           tar -czf SaibaUltimate-PSP.tar.gz -C release .
       - name: Publish PSP package artifact
         uses: actions/upload-artifact@v4
