@@ -209,6 +209,13 @@ static void text5Layer(int x,int y,const char *str,unsigned int color,int scale)
 /* Typography pass: a dark offset shadow improves legibility over illustrated
    backgrounds while retaining the lightweight PSP GU renderer. */
 static void text5(int x,int y,const char *str,unsigned int color,int scale){
+ /* Contorno escuro de 1 px + sombra: melhora o contraste sobre fundos claros
+    e evita que as letras se percam na arte do menu. */
+ unsigned int outline=rgba(5,4,10,245);
+ text5Layer(x-1,y,str,outline,scale);
+ text5Layer(x+1,y,str,outline,scale);
+ text5Layer(x,y-1,str,outline,scale);
+ text5Layer(x,y+1,str,outline,scale);
  text5Layer(x+1,y+2,str,rgba(5,4,10,220),scale);
  text5Layer(x,y,str,color,scale);
 }
@@ -366,7 +373,7 @@ static void render(void){
   if(state==TITLE){
    text5(254,54,"MENU PRINCIPAL",GOLD,2);
    rect(253,72,207,1,rgba(205,145,48,190));
-   const char *items[5]={"NOVO JOGO","CONTINUAR","CAMPO DE TREINO","MISSAO...","DEFINICOES"};
+   const char *items[5]={"NOVO JOGO","CONTINUAR","CAMPO DE TREINO","MISSOES","DEFINICOES"};
    for(int i=0;i<5;i++){
     int y=79+i*29;
     rect(250,y-3,214,23,i==menuIndex?rgba(157,91,18,245):rgba(25,22,31,215));
@@ -378,9 +385,9 @@ static void render(void){
     text5(274,y+4,items[i],i==menuIndex?GOLD:WHITE,2);
    }
    rect(0,239,480,33,rgba(5,5,10,225));
-   text5(15,251,"X CONFIRMAR",WHITE,1);
-   text5(170,251,"O VOLTAR",WHITE,1);
-   text5(302,251,"TRIANGULO MENU",GOLD,1);
+   text5(15,250,"X CONFIRMAR",WHITE,1);
+   text5(170,250,"O VOLTAR",WHITE,1);
+   text5(302,250,"TRIANGULO MENU",GOLD,1);
   }else if(state==SETTINGS){
    text5(262,66,"DEFINICOES",GOLD,2);
    rect(253,89,195,1,rgba(205,145,48,170));
