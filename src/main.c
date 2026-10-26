@@ -368,14 +368,14 @@ static void render(void){
    rect(253,72,207,1,rgba(205,145,48,190));
    const char *items[5]={"NOVO JOGO","CONTINUAR","CAMPO DE TREINO","MISSAO...","DEFINICOES"};
    for(int i=0;i<5;i++){
-    int y=81+i*27;
+    int y=79+i*29;
     rect(250,y-3,214,23,i==menuIndex?rgba(157,91,18,245):rgba(25,22,31,215));
     if(i==menuIndex){
      tri(252,y+8,260,y,y+16,GOLD);
      rect(263,y-3,2,23,GOLD);
      rect(267,y-3,194,1,rgba(255,211,112,210));
     }else rect(267,y+19,194,1,rgba(92,69,47,140));
-    text5(274,y+3,items[i],i==menuIndex?GOLD:WHITE,1);
+    text5(274,y+4,items[i],i==menuIndex?GOLD:WHITE,2);
    }
    rect(0,239,480,33,rgba(5,5,10,225));
    text5(15,251,"X CONFIRMAR",WHITE,1);
