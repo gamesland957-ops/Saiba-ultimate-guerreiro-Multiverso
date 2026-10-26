@@ -371,7 +371,7 @@ static void render(void){
     int y=79+i*29;
     rect(250,y-3,214,23,i==menuIndex?rgba(157,91,18,245):rgba(25,22,31,215));
     if(i==menuIndex){
-     tri(252,y+8,260,y,y+16,GOLD);
+     tri(252,y+8,260,y,252,y+16,GOLD);
      rect(263,y-3,2,23,GOLD);
      rect(267,y-3,194,1,rgba(255,211,112,210));
     }else rect(267,y+19,194,1,rgba(92,69,47,140));
