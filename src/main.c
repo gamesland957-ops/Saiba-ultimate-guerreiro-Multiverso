@@ -46,7 +46,7 @@ static unsigned int imageSourceW[4]={480,480,480,480};
 static unsigned int imageSourceH[4]={272,272,272,272};
 static unsigned int imageTexW[4]={512,512,512,512};
 static unsigned int imageTexH[4]={290,290,290,290};
-static const char *imagePaths[4]={"assets/capa.jpg","assets/game_play_roms.jpg","assets/gc_company.jpg","assets/menu_background.jpg"};
+static const char *imagePaths[4]={"assets/capa.jpg","assets/game_play_roms.jpg","assets/gc_company.jpg","assets/menus/menu_background_480x272.jpg"};
 static int loadJpeg(int id){
  if(id<0||id>3)return 0;
  if(imageLoaded[id])return 1;
