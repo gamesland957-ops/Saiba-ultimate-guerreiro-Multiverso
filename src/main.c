@@ -368,26 +368,33 @@ static void render(void){
   saje(118,171,1,0);
   rect(28,202,191,25,rgba(8,7,14,205));
   text5(39,211,"SAJE CAPANJI",WHITE,1);
-  rect(242,45,230,188,rgba(7,6,13,220));
-  rect(242,45,230,2,rgba(205,145,48,240));
+  rect(238,43,235,190,rgba(7,6,13,232));
+  rect(238,43,235,3,rgba(235,181,66,250));
+  rect(238,43,3,190,rgba(235,181,66,180));
   if(state==TITLE){
-   text5(254,54,"MENU PRINCIPAL",GOLD,2);
-   rect(253,72,207,1,rgba(205,145,48,190));
+   text5(252,52,"MENU PRINCIPAL",GOLD,2);
+   rect(250,69,210,2,rgba(205,145,48,200));
    const char *items[5]={"NOVO JOGO","CONTINUAR","CAMPO DE TREINO","MISSOES","DEFINICOES"};
    for(int i=0;i<5;i++){
-    int y=79+i*29;
-    rect(250,y-3,214,23,i==menuIndex?rgba(157,91,18,245):rgba(25,22,31,215));
+    int y=77+i*29;
     if(i==menuIndex){
+     rect(248,y-4,216,25,rgba(123,72,16,245));
+     rect(248,y-4,216,2,rgba(255,211,112,255));
+     rect(248,y+19,216,2,rgba(255,211,112,220));
      tri(252,y+8,260,y,252,y+16,GOLD);
-     rect(263,y-3,2,23,GOLD);
-     rect(267,y-3,194,1,rgba(255,211,112,210));
-    }else rect(267,y+19,194,1,rgba(92,69,47,140));
-    text5(274,y+4,items[i],i==menuIndex?GOLD:WHITE,2);
+     rect(265,y-2,2,21,GOLD);
+     text5(274,y+3,items[i],GOLD,2);
+     rect(452,y-1,3,19,rgba(255,230,151,255));
+    }else{
+     rect(252,y+21,208,1,rgba(92,69,47,155));
+     text5(274,y+3,items[i],WHITE,2);
+    }
    }
-   rect(0,239,480,33,rgba(5,5,10,225));
-   text5(15,250,"X CONFIRMAR",WHITE,1);
-   text5(170,250,"O VOLTAR",WHITE,1);
-   text5(302,250,"TRIANGULO MENU",GOLD,1);
+   rect(0,239,480,33,rgba(5,5,10,235));
+   rect(0,239,480,2,rgba(235,181,66,210));
+   text5(18,250,"X CONFIRMAR",WHITE,1);
+   text5(190,250,"DIRECIONAL NAVEGAR",WHITE,1);
+   text5(375,250,"SOM",GOLD,1);
   }else if(state==SETTINGS){
    text5(262,66,"DEFINICOES",GOLD,2);
    rect(253,89,195,1,rgba(205,145,48,170));
@@ -441,8 +448,10 @@ int main(void){
   else if(state==TITLE){
    if(pressed&(PSP_CTRL_UP|PSP_CTRL_LEFT)){menuIndex=(menuIndex+4)%5;sound(0);}
    if(pressed&(PSP_CTRL_DOWN|PSP_CTRL_RIGHT)){menuIndex=(menuIndex+1)%5;sound(0);}
-   if(pressed&(PSP_CTRL_CIRCLE|PSP_CTRL_TRIANGLE)){state=TITLE;menuIndex=0;}
+   /* No menu principal, o direcional muda a opcao e X confirma.
+      O e triangulo nao devem saltar silenciosamente para a primeira opcao. */
    if(pressed&PSP_CTRL_CROSS){
+    sound(1);
     if(menuIndex==0){reset_game();}
     else if(menuIndex==1){reset_game();} /* save-data system will replace this temporary fallback */
     else if(menuIndex==2){reset_game();state=TRAINING;}
