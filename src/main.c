@@ -115,7 +115,7 @@ static void imageBackground(int id){
  v[0]=(TexVertex){0,0,0xffffffff,x,y,0};
  v[1]=(TexVertex){0,(float)imageTexH,0xffffffff,x,y+dh,0};
  v[2]=(TexVertex){(float)imageTexW,0,0xffffffff,x+dw,y,0};
- v[3]=(TexVertex){(float)imageTexW[id],(float)imageTexH[id],0xffffffff,x+dw,y+dh,0};
+ v[3]=(TexVertex){(float)imageTexW,(float)imageTexH,0xffffffff,x+dw,y+dh,0};
  sceGuDrawArray(GU_TRIANGLE_STRIP,GU_TEXTURE_32BITF|GU_COLOR_8888|GU_VERTEX_32BITF|GU_TRANSFORM_2D,4,0,v);
  sceGuDisable(GU_TEXTURE_2D);
 }
