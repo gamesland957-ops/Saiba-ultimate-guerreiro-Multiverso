@@ -40,16 +40,15 @@ static unsigned int __attribute__((aligned(16))) fb1[STRIDE*H];
 
 #define TEX_W 512
 #define TEX_H 512
-static unsigned int __attribute__((aligned(16))) imagePixels[4][TEX_W*TEX_H];
-static int imageLoaded[4]={0,0,0,0};
-static unsigned int imageSourceW[4]={480,480,480,480};
-static unsigned int imageSourceH[4]={272,272,272,272};
-static unsigned int imageTexW[4]={512,512,512,512};
-static unsigned int imageTexH[4]={290,290,290,290};
+static unsigned int __attribute__((aligned(16))) imagePixels[TEX_W*TEX_H];
+/* Uma unica textura reutilizada entre abertura e menu para reduzir o pico de RAM. */
+static int loadedImage=-1;
+static unsigned int imageSourceW=480, imageSourceH=272;
+static unsigned int imageTexW=512, imageTexH=290;
 static const char *imagePaths[4]={"assets/capa.jpg","assets/game_play_roms.jpg","assets/gc_company.jpg","assets/menus/menu_background_480x272.jpg"};
 static int loadJpeg(int id){
  if(id<0||id>3)return 0;
- if(imageLoaded[id])return 1;
+ if(loadedImage==id)return 1;
  FILE *f=fopen(imagePaths[id],"rb"); if(!f)return 0;
  struct jpeg_decompress_struct cinfo; struct jpeg_error_mgr jerr;
  cinfo.err=jpeg_std_error(&jerr); jpeg_create_decompress(&cinfo); jpeg_stdio_src(&cinfo,f);
@@ -57,7 +56,7 @@ static int loadJpeg(int id){
  cinfo.out_color_space=JCS_RGB; jpeg_start_decompress(&cinfo);
  unsigned int sw=cinfo.output_width, sh=cinfo.output_height;
  if(sw==0||sh==0||sw>8192||sh>8192){jpeg_destroy_decompress(&cinfo);fclose(f);return 0;}
- imageSourceW[id]=sw; imageSourceH[id]=sh;
+ imageSourceW=sw; imageSourceH=sh;
  /* Descodificar a imagem completa antes de redimensionar, para permitir interpolacao bilinear. */
  size_t srcBytes=(size_t)sw*(size_t)sh*3u;
  if(srcBytes>12000000u){jpeg_destroy_decompress(&cinfo);fclose(f);return 0;}
@@ -72,8 +71,8 @@ static int loadJpeg(int id){
  unsigned int tw=TEX_W, th=(unsigned int)(((unsigned long long)TEX_W*(unsigned long long)sh+(unsigned long long)sw/2u)/(unsigned long long)sw);
  if(th==0)th=1;
  if(th>TEX_H){th=TEX_H;tw=(unsigned int)(((unsigned long long)TEX_H*(unsigned long long)sw+(unsigned long long)sh/2u)/(unsigned long long)sh);}
- imageTexW[id]=tw;imageTexH[id]=th;
- for(unsigned int i=0;i<TEX_W*TEX_H;i++)imagePixels[id][i]=0xff080810u;
+ imageTexW=tw;imageTexH=th;
+ for(unsigned int i=0;i<TEX_W*TEX_H;i++)imagePixels[i]=0xff080810u;
  for(unsigned int y=0;y<th;y++){
   float fy=((float)y+0.5f)*(float)sh/(float)th-0.5f;
   if(fy<0)fy=0;if(fy>(float)(sh-1))fy=(float)(sh-1);
@@ -93,29 +92,29 @@ static int loadJpeg(int id){
     int value=(int)(a*(1.0f-wy)+b*wy+0.5f);
     if(value<0)value=0;if(value>255)value=255;rgb[k]=(unsigned int)value;
    }
-   imagePixels[id][y*TEX_W+x]=rgb[0]|(rgb[1]<<8)|(rgb[2]<<16)|0xff000000u;
+   imagePixels[y*TEX_W+x]=rgb[0]|(rgb[1]<<8)|(rgb[2]<<16)|0xff000000u;
   }
  }
- sceKernelDcacheWritebackRange(imagePixels[id],sizeof(imagePixels[id]));
+ sceKernelDcacheWritebackRange(imagePixels,sizeof(imagePixels));
  free(src);
- imageLoaded[id]=1;return 1;
+ loadedImage=id;return 1;
 }
 static void imageBackground(int id){
  if(!loadJpeg(id))return;
  sceGuEnable(GU_TEXTURE_2D);sceGuTexMode(GU_PSM_8888,0,0,0);
- sceGuTexImage(0,TEX_W,TEX_H,TEX_W,imagePixels[id]);
+ sceGuTexImage(0,TEX_W,TEX_H,TEX_W,imagePixels);
  sceGuTexFunc(GU_TFX_REPLACE,GU_TCC_RGBA);sceGuTexFilter(GU_LINEAR,GU_LINEAR);
  /* Ajustar a imagem ao ecrã sem deformar: preservar a proporção original.
     As imagens mais estreitas ficam centradas; as mais largas mantêm barras discretas. */
- float aspect=(float)imageSourceW[id]/(float)imageSourceH[id];
+ float aspect=(float)imageSourceW/(float)imageSourceH;
  float dw=(float)W, dh=dw/aspect;
  if(dh>(float)H){dh=(float)H;dw=dh*aspect;}
  float x=((float)W-dw)*0.5f, y=((float)H-dh)*0.5f;
  TexVertex *v=(TexVertex*)sceGuGetMemory(4*sizeof(TexVertex));
  /* A textura interna ocupa 512x512; usar todo o UV para evitar corte acidental. */
  v[0]=(TexVertex){0,0,0xffffffff,x,y,0};
- v[1]=(TexVertex){0,(float)imageTexH[id],0xffffffff,x,y+dh,0};
- v[2]=(TexVertex){(float)imageTexW[id],0,0xffffffff,x+dw,y,0};
+ v[1]=(TexVertex){0,(float)imageTexH,0xffffffff,x,y+dh,0};
+ v[2]=(TexVertex){(float)imageTexW,0,0xffffffff,x+dw,y,0};
  v[3]=(TexVertex){(float)imageTexW[id],(float)imageTexH[id],0xffffffff,x+dw,y+dh,0};
  sceGuDrawArray(GU_TRIANGLE_STRIP,GU_TEXTURE_32BITF|GU_COLOR_8888|GU_VERTEX_32BITF|GU_TRANSFORM_2D,4,0,v);
  sceGuDisable(GU_TEXTURE_2D);
