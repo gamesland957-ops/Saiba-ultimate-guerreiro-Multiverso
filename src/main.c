@@ -1,7 +1,7 @@
 /*
  * Saiba Ultimate: Guerreiro do Multiverso
  * Primeiro prototipo grafico PSP: Aldeia Africaca / Saje Capanji.
- * Renderizacao 2D por PSP GU; arte procedural provisoria, sprites finais por integrar.
+ * Menu 2D e primeiro cenario 3D do Campo de Treino por PSP GU/GUM.
  */
 #include <pspkernel.h>
 #include <pspdisplay.h>
@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <jpeglib.h>
 #include "font_atlas.h"
+#include "training3d.h"
 
 PSP_MODULE_INFO("Saiba Ultimate", 0, 1, 0);
 PSP_MAIN_THREAD_ATTR(THREAD_ATTR_USER | THREAD_ATTR_VFPU);
@@ -359,7 +360,7 @@ static void intro_backdrop(void){
 
 static void render(void){
  sceGuStart(GU_DIRECT,list);
- sceGuClearColor(rgba(18,16,31,255));sceGuClear(GU_COLOR_BUFFER_BIT);
+ sceGuClearColor(rgba(18,16,31,255));\n if(state==TRAINING){sceGuClearDepth(0);sceGuClear(GU_COLOR_BUFFER_BIT|GU_DEPTH_BUFFER_BIT);}\n else sceGuClear(GU_COLOR_BUFFER_BIT);
  if(state==INTRO_COVER){imageBackground(0);text5(139,237,"PRESSIONE X",WHITE,2);}
  else if(state==INTRO_ROMS){imageBackground(1);}
  else if(state==INTRO_GC){imageBackground(2);}
@@ -371,7 +372,7 @@ static void render(void){
 
  }else if(state==INTRO_GC){
 
- }else if(state==TITLE||state==SETTINGS||state==TRAINING){
+ }else if(state==TITLE||state==SETTINGS){
   /* Menu cinematografico: fundo ilustrado limpo, personagem integrado
      na arte original e painel de navegacao com hierarquia visual clara. */
   /* Cabecalho superior com identidade do jogo. */
