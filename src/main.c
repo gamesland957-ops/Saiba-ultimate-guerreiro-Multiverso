@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <jpeglib.h>
+#include "font_atlas.h"
 
 PSP_MODULE_INFO("Saiba Ultimate", 0, 1, 0);
 PSP_MAIN_THREAD_ATTR(THREAD_ATTR_USER | THREAD_ATTR_VFPU);
@@ -173,76 +174,64 @@ static void tree(float x,float y,float s){
  circle(x+15*s,y-42*s,15*s,rgba(48,125,57,255));
 }
 
-static const unsigned char font5x7[38][7]={
-{14,17,17,31,17,17,17},{30,17,17,30,17,17,30},{14,17,16,16,16,17,14},
-{30,17,17,17,17,17,30},{31,16,16,30,16,16,31},{31,16,16,30,16,16,16},
-{14,17,16,23,17,17,15},{17,17,17,31,17,17,17},{14,4,4,4,4,4,14},
-{7,2,2,2,18,18,12},{17,18,20,24,20,18,17},{16,16,16,16,16,16,31},
-{17,27,21,21,17,17,17},{17,25,21,19,17,17,17},{14,17,17,17,17,17,14},
-{30,17,17,30,16,16,16},{14,17,17,17,21,18,13},{30,17,17,30,20,18,17},
-{15,16,16,14,1,1,30},{31,4,4,4,4,4,4},{17,17,17,17,17,17,14},
-{17,17,17,17,17,10,4},{17,17,17,21,21,21,10},{17,17,10,4,10,17,17},
-{17,17,10,4,4,4,4},{31,1,2,4,8,16,31},
-{14,17,19,21,25,17,14},{4,12,4,4,4,4,14},{14,17,1,2,4,8,31},
-{30,1,1,14,1,1,30},{2,6,10,18,31,2,2},{31,16,16,30,1,1,30},
-{14,16,16,30,17,17,14},{31,1,2,4,8,8,8},{14,17,17,14,17,17,14},
-{14,17,17,15,1,1,14},{0,0,0,31,0,0,0},{0,4,4,0,4,4,0}
-};
-static void text5Layer(int x,int y,const char *str,unsigned int color,int scale){
- /* Agrupar todos os pixels da linha num unico desenho GU_SPRITES.
-    A versao anterior emitia um comando GU por pixel, enchendo a lista
-    de comandos da PSP e provocando cintilacao/corrupcao do frame. */
- size_t chars=strlen(str);
- if(chars==0||scale<=0)return;
- TexVertex *unused=0; (void)unused;
- int pixelCount=0;
- /* Primeira passagem: contar apenas os pixels realmente acesos. */
- for(const unsigned char *p=(const unsigned char*)str;*p;p++){
-  unsigned char ch=*p;
-  if(ch>='a'&&ch<='z')ch=(unsigned char)(ch-32);
-  int idx=-1;
-  if(ch>='A'&&ch<='Z')idx=ch-'A';
-  else if(ch>='0'&&ch<='9')idx=26+ch-'0';
-  else if(ch=='-')idx=36;
-  else if(ch==':'||ch=='.')idx=37;
-  if(idx<0)continue;
-  for(int row=0;row<7;row++)for(int col=0;col<5;col++)
-   if(font5x7[idx][row]&(1<<(4-col)))pixelCount++;
- }
- if(pixelCount==0)return;
- /* Reservar na lista GU somente os vertices que serao desenhados.
-    A reserva anterior usava 35 pixels por caracter, mesmo para espacos,
-    e multiplicava esse desperdicio pelas seis camadas de texto. */
- Vertex *v=(Vertex*)sceGuGetMemory((size_t)pixelCount*2u*sizeof(Vertex));
- if(!v)return;
- int count=0, penX=x;
- for(const unsigned char *p=(const unsigned char*)str;*p;p++,penX+=6*scale){
-  unsigned char ch=*p;
-  if(ch>='a'&&ch<='z')ch=(unsigned char)(ch-32);
-  int idx=-1;
-  if(ch>='A'&&ch<='Z')idx=ch-'A';
-  else if(ch>='0'&&ch<='9')idx=26+ch-'0';
-  else if(ch=='-')idx=36;
-  else if(ch==':'||ch=='.')idx=37;
-  if(idx<0)continue;
-  for(int row=0;row<7;row++)for(int col=0;col<5;col++){
-   if(font5x7[idx][row]&(1<<(4-col))){
-    float px=(float)(penX+col*scale),py=(float)(y+row*scale);
-    v[count++]=(Vertex){color,px,py,0};
-    v[count++]=(Vertex){color,px+(float)scale,py+(float)scale,0};
-   }
-  }
- }
- sceGuDrawArray(GU_SPRITES,GU_COLOR_8888|GU_VERTEX_32BITF|GU_TRANSFORM_2D,(unsigned int)count,0,v);
+static unsigned int __attribute__((aligned(16))) fontPalette[256];
+static int fontReady=0;
+static void initFont(void){
+ if(fontReady)return;
+ for(int i=0;i<256;i++)fontPalette[i]=0x00ffffffu|((unsigned int)i<<24);
+ sceKernelDcacheWritebackRange(fontAtlas,sizeof(fontAtlas));
+ sceKernelDcacheWritebackRange(fontPalette,sizeof(fontPalette));
+ fontReady=1;
 }
-/* Typography pass: a dark offset shadow improves legibility over illustrated
-   backgrounds while retaining the lightweight PSP GU renderer. */
+static unsigned int nextUtf8(const unsigned char **s){
+ unsigned int c=*(*s)++;
+ if(c<0x80)return c;
+ if((c&0xe0)==0xc0){unsigned int a=*(*s)++;return ((c&0x1f)<<6)|(a&0x3f);}
+ if((c&0xf0)==0xe0){unsigned int a=*(*s)++,b=*(*s)++;return ((c&0x0f)<<12)|((a&0x3f)<<6)|(b&0x3f);}
+ if((c&0xf8)==0xf0){unsigned int a=*(*s)++,b=*(*s)++,d=*(*s)++;return ((c&7)<<18)|((a&0x3f)<<12)|((b&0x3f)<<6)|(d&0x3f);}
+ return '?';
+}
+static const FontGlyph *findGlyph(unsigned int code){
+ for(unsigned int i=0;i< FONT_GLYPH_COUNT;i++)if(fontGlyphs[i].code==code)return &fontGlyphs[i];
+ if(code>='a'&&code<='z')return findGlyph(code-32);
+ return &fontGlyphs[0];
+}
+static void text5Layer(int x,int y,const char *str,unsigned int color,int scale){
+ if(!str||!*str||scale<=0)return;
+ initFont();
+ float factor=(float)scale*0.78f;
+ size_t n=strlen(str);
+ TexVertex *v=(TexVertex*)sceGuGetMemory((n?n:1)*2u*sizeof(TexVertex));
+ if(!v)return;
+ int count=0,pen=x;
+ const unsigned char *p=(const unsigned char*)str;
+ while(*p){
+  unsigned int cp=nextUtf8(&p);
+  const FontGlyph *g=findGlyph(cp);
+  if(g->w&&g->h){
+   float x0=(float)pen+(float)g->left*factor;
+   float y0=(float)y+(float)g->top*factor;
+   float x1=x0+(float)g->w*factor,y1=y0+(float)g->h*factor;
+   v[count++]=(TexVertex){(float)g->x,(float)g->y,color,x0,y0,0};
+   v[count++]=(TexVertex){(float)(g->x+g->w),(float)(g->y+g->h),color,x1,y1,0};
+  }
+  pen+=(int)((float)g->advance*factor+0.5f);
+ }
+ if(count==0)return;
+ sceGuEnable(GU_TEXTURE_2D);
+ sceGuTexMode(GU_PSM_T8,0,0,0);
+ sceGuClutMode(GU_PSM_8888,0,0xff,0);
+ sceGuClutLoad(32,fontPalette);
+ sceGuTexImage(0,FONT_ATLAS_SIZE,FONT_ATLAS_SIZE,FONT_ATLAS_SIZE,fontAtlas);
+ sceGuTexFunc(GU_TFX_MODULATE,GU_TCC_RGBA);
+ sceGuTexFilter(GU_LINEAR,GU_LINEAR);
+ sceGuTexWrap(GU_CLAMP,GU_CLAMP);
+ sceGuDrawArray(GU_SPRITES,GU_TEXTURE_32BITF|GU_COLOR_8888|GU_VERTEX_32BITF|GU_TRANSFORM_2D,(unsigned int)count,0,v);
+ sceGuDisable(GU_TEXTURE_2D);
+}
 static void text5(int x,int y,const char *str,unsigned int color,int scale){
- /* Contorno diagonal discreto e sombra curta: letras mais limpas,
-    com menos camadas e menor consumo da lista de comandos GU. */
- unsigned int outline=rgba(5,4,10,235);
+ unsigned int outline=rgba(5,4,10,220);
  text5Layer(x+1,y+1,str,outline,scale);
- text5Layer(x+1,y+2,str,rgba(5,4,10,190),scale);
  text5Layer(x,y,str,color,scale);
 }
 
