@@ -17,11 +17,13 @@ font=ImageFont.truetype(str(font_path),FONT_SIZE)
 atlas=Image.new("L",(SIZE,SIZE),0)
 draw=ImageDraw.Draw(atlas)
 glyphs=[]
+seen=set()
 x=y=2
 row_h=0
 for ch in CHARS:
-    if any(g["code"]==ord(ch) for g in glyphs):
+    if ord(ch) in seen:
         continue
+    seen.add(ord(ch))
     bbox=font.getbbox(ch)
     left,top,right,bottom=bbox
     w=max(0,right-left); h=max(0,bottom-top)
