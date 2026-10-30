@@ -1,5 +1,5 @@
 TARGET = SaibaUltimate
-OBJS = src/main.o
+OBJS = src/main.o src/training3d.o
 
 PSPSDK := $(shell psp-config --pspsdk-path)
 INCDIR =
