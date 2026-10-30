@@ -370,59 +370,74 @@ static void render(void){
  }else if(state==INTRO_GC){
 
  }else if(state==TITLE||state==SETTINGS||state==TRAINING){
-  /* Molduras e acentos dourados para aproximar o menu do conceito visual. */
-  /* Menu inspirado na referencia: arte livre a esquerda, painel de selecao dourado a direita. */
-  rect(7,7,466,31,rgba(8,7,15,205));
-  rect(7,7,466,2,rgba(224,166,61,240));
-  text5(18,16,"SOBA ULTIMATO",GOLD,2);
-  text5(18,29,"GUERREIRO MULTIVERSO",WHITE,1);
-  rect(18,55,211,177,rgba(12,10,20,125));
-  rect(18,55,211,2,rgba(205,145,48,225));
-  saje(118,171,1,0);
-  rect(28,202,191,25,rgba(8,7,14,205));
-  text5(39,211,"SAJE CAPANJI",WHITE,1);
-  rect(238,43,235,190,rgba(7,6,13,232));
-  rect(238,43,235,3,rgba(235,181,66,250));
-  rect(238,43,3,190,rgba(235,181,66,180));
+  /* Menu cinematografico: fundo ilustrado limpo, personagem integrado
+     na arte original e painel de navegacao com hierarquia visual clara. */
+  /* Cabecalho superior com identidade do jogo. */
+  rect(0,0,480,49,rgba(5,6,15,205));
+  rect(0,0,480,2,rgba(246,190,73,245));
+  rect(0,46,480,2,rgba(198,133,38,220));
+  text5(18,10,"SOBA ULTIMATO",GOLD,2);
+  text5(19,29,"GUERREIRO MULTIVERSO",WHITE,1);
+  /* Pequeno selo de universo no canto superior direito. */
+  rect(410,10,55,25,rgba(10,10,20,185));
+  rect(410,10,55,2,rgba(236,181,69,220));
+  text5(425,18,"PSP",GOLD,1);
+
+  /* Cartao de personagem: nao desenhar o boneco provisoriamente sobre
+     Saje, que ja esta integrado no fundo cinematografico. */
+  rect(16,194,218,58,rgba(5,7,15,218));
+  rect(16,194,218,2,rgba(239,178,58,240));
+  rect(16,194,3,58,rgba(239,178,58,210));
+  text5(29,207,"PERSONAGEM INICIAL",rgba(235,190,92,255),1);
+  text5(29,224,"SAJE CAPANJI",WHITE,2);
+  text5(29,243,"MESTRE DOS QUATRO ELEMENTOS",rgba(222,216,202,255),1);
+
+  /* Painel principal com camadas de profundidade e moldura dourada. */
+  rect(247,53,222,181,rgba(5,6,14,226));
+  rect(247,53,222,3,rgba(247,190,67,255));
+  rect(247,53,3,181,rgba(225,163,51,235));
+  rect(251,58,214,171,rgba(18,17,27,115));
   if(state==TITLE){
-   text5(252,52,"MENU PRINCIPAL",GOLD,2);
-   rect(250,69,210,2,rgba(205,145,48,200));
+   text5(263,65,"MENU PRINCIPAL",GOLD,2);
+   rect(261,84,194,2,rgba(215,157,56,220));
    const char *items[5]={"NOVO JOGO","CONTINUAR","CAMPO DE TREINO","MISSOES","DEFINICOES"};
    for(int i=0;i<5;i++){
-    int y=77+i*29;
+    int y=91+i*27;
     if(i==menuIndex){
-     rect(248,y-4,216,25,rgba(123,72,16,245));
-     rect(248,y-4,216,2,rgba(255,211,112,255));
-     rect(248,y+19,216,2,rgba(255,211,112,220));
-     tri(252,y+8,260,y,252,y+16,GOLD);
-     rect(265,y-2,2,21,GOLD);
-     text5(274,y+3,items[i],GOLD,2);
-     rect(452,y-1,3,19,rgba(255,230,151,255));
+     rect(257,y-3,202,24,rgba(145,82,20,238));
+     rect(257,y-3,202,2,rgba(255,218,119,255));
+     rect(257,y+19,202,2,rgba(255,218,119,245));
+     rect(257,y-3,4,24,rgba(255,204,78,255));
+     tri(265,y+9,273,y+1,273,y+17,rgba(255,226,128,255));
+     text5(281,y+2,items[i],GOLD,2);
+     rect(449,y+1,3,17,rgba(255,225,139,255));
     }else{
-     rect(252,y+21,208,1,rgba(92,69,47,155));
-     text5(274,y+3,items[i],WHITE,2);
+     rect(267,y+20,185,1,rgba(120,96,63,155));
+     text5(281,y+2,items[i],WHITE,2);
     }
    }
-   rect(0,239,480,33,rgba(5,5,10,235));
-   rect(0,239,480,2,rgba(235,181,66,210));
-   text5(18,250,"X CONFIRMAR",WHITE,1);
-   text5(190,250,"DIRECIONAL NAVEGAR",WHITE,1);
-   text5(375,250,"SOM",GOLD,1);
   }else if(state==SETTINGS){
-   text5(262,66,"DEFINICOES",GOLD,2);
-   rect(253,89,195,1,rgba(205,145,48,170));
-   rect(250,settingIndex==0?96:settingIndex==1?132:168,204,21,rgba(151,90,20,100));
-   text5(258,103,language?"IDIOMA: EN":"IDIOMA: PT",WHITE,1);
-   text5(258,139,soundEnabled?"SOM: LIGADO":"SOM: DESLIGADO",WHITE,1);
-   text5(258,175,"EFEITOS SONOROS",WHITE,1);
-   text5(258,224,"O VOLTAR",GOLD,1);
+   text5(263,65,"DEFINICOES",GOLD,2);
+   rect(261,84,194,2,rgba(215,157,56,220));
+   rect(257,settingIndex==0?94:settingIndex==1?128:162,202,23,rgba(145,82,20,145));
+   text5(270,101,language?"IDIOMA: EN":"IDIOMA: PT",WHITE,1);
+   text5(270,135,soundEnabled?"SOM: LIGADO":"SOM: DESLIGADO",WHITE,1);
+   text5(270,169,"EFEITOS SONOROS",WHITE,1);
+   text5(270,211,"O VOLTAR",GOLD,1);
   }else{
-   text5(252,52,"CAMPO DE TREINO",GOLD,1);
-   rect(253,72,195,1,rgba(205,145,48,170));
-   text5(258,91,"BATALHA NA ARENA",WHITE,1);
-   text5(258,122,"X INICIAR",GOLD,1);
-   text5(258,224,"O VOLTAR",GOLD,1);
+   text5(263,65,"CAMPO DE TREINO",GOLD,1);
+   rect(261,84,194,2,rgba(215,157,56,220));
+   text5(270,105,"BATALHA NA ARENA",WHITE,1);
+   text5(270,139,"X INICIAR",GOLD,1);
+   text5(270,211,"O VOLTAR",GOLD,1);
   }
+
+  /* Barra inferior discreta: instrucoes de comando sem tapar a arte. */
+  rect(0,258,480,14,rgba(4,5,12,225));
+  rect(0,258,480,1,rgba(226,164,54,210));
+  text5(18,263,"X SELECIONAR",WHITE,1);
+  text5(188,263,"DIRECIONAL NAVEGAR",WHITE,1);
+  text5(390,263,"G.C",GOLD,1);
  }else if(state==PORTAL){
   circle(397,117,35,rgba(31,130,255,55));circle(397,117,27,rgba(39,170,255,120));circle(397,117,18,rgba(89,214,255,190));rect(393,88,8,59,rgba(190,242,255,210));
   circle(424,149,9,rgba(225,174,117,255));tri(414,144,418,126,428,141,rgba(30,27,34,255));tri(423,139,435,126,431,144,rgba(30,27,34,255));rect(416,158,16,24,rgba(38,90,218,255));
