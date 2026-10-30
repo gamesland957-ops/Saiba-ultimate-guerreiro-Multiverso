@@ -360,11 +360,14 @@ static void intro_backdrop(void){
 
 static void render(void){
  sceGuStart(GU_DIRECT,list);
- sceGuClearColor(rgba(18,16,31,255));\n if(state==TRAINING){sceGuClearDepth(0);sceGuClear(GU_COLOR_BUFFER_BIT|GU_DEPTH_BUFFER_BIT);}\n else sceGuClear(GU_COLOR_BUFFER_BIT);
+ sceGuClearColor(rgba(18,16,31,255));
+ if(state==TRAINING){sceGuClearDepth(0);sceGuClear(GU_COLOR_BUFFER_BIT|GU_DEPTH_BUFFER_BIT);}
+ else sceGuClear(GU_COLOR_BUFFER_BIT);
  if(state==INTRO_COVER){imageBackground(0);text5(139,237,"PRESSIONE X",WHITE,2);}
  else if(state==INTRO_ROMS){imageBackground(1);}
  else if(state==INTRO_GC){imageBackground(2);}
- else if(state==TITLE||state==SETTINGS){imageBackground(3);}\n else if(state==TRAINING){rect(0,0,W,H,rgba(139,184,205,255));training3d_render();}
+ else if(state==TITLE||state==SETTINGS){imageBackground(3);}
+ else if(state==TRAINING){rect(0,0,W,H,rgba(139,184,205,255));training3d_render();}
  else village();
  if(state==INTRO_COVER){
 
@@ -442,6 +445,11 @@ static void render(void){
   text5(18,263,"X SELECIONAR",WHITE,1);
   text5(188,263,"DIRECIONAL NAVEGAR",WHITE,1);
   text5(390,263,"G.C",GOLD,1);
+ }else if(state==TRAINING){
+  rect(0,0,480,28,rgba(5,8,15,190));
+  rect(0,27,480,1,rgba(235,184,74,220));
+  text5(14,8,"CAMPO DE TREINO 3D",GOLD,2);
+  text5(325,10,"X SALTAR   O ATACAR",WHITE,1);
  }else if(state==PORTAL){
   circle(397,117,35,rgba(31,130,255,55));circle(397,117,27,rgba(39,170,255,120));circle(397,117,18,rgba(89,214,255,190));rect(393,88,8,59,rgba(190,242,255,210));
   circle(424,149,9,rgba(225,174,117,255));tri(414,144,418,126,428,141,rgba(30,27,34,255));tri(423,139,435,126,431,144,rgba(30,27,34,255));rect(416,158,16,24,rgba(38,90,218,255));
