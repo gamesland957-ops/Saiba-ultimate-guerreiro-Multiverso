@@ -7,11 +7,12 @@ SIZE=512
 FONT_SIZE=22
 CHARS=(" "+ "".join(chr(i) for i in range(33,127)) +
        "ÁÀÂÃÉÊÍÓÔÕÚÜÇáàâãéêíóôõúüç")
-font_path=Path("/usr/share/fonts/TTF/Lato-Bold.ttf")
-if not font_path.exists():
-    font_path=Path("/usr/share/fonts/truetype/lato/Lato-Bold.ttf")
-if not font_path.exists():
-    raise SystemExit("Lato Bold não encontrada; instale o pacote ttf-lato.")
+font_candidates=list(Path("/usr/share/fonts").rglob("Lato-Bold.ttf"))
+if not font_candidates:
+    font_candidates=list(Path("/usr/share/fonts").rglob("lato-bold.ttf"))
+if not font_candidates:
+    raise SystemExit("Lato Bold não encontrada; verifique o pacote font-lato.")
+font_path=font_candidates[0]
 font=ImageFont.truetype(str(font_path),FONT_SIZE)
 atlas=Image.new("L",(SIZE,SIZE),0)
 draw=ImageDraw.Draw(atlas)
