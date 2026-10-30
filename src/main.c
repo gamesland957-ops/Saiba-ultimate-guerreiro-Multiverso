@@ -361,7 +361,7 @@ static void intro_backdrop(void){
 static void render(void){
  sceGuStart(GU_DIRECT,list);
  sceGuClearColor(rgba(18,16,31,255));
- if(state==TRAINING){sceGuClearDepth(0);sceGuClear(GU_COLOR_BUFFER_BIT|GU_DEPTH_BUFFER_BIT);}
+ if(state==TRAINING){sceGuDepthMask(GU_FALSE);sceGuClearDepth(0);sceGuClear(GU_COLOR_BUFFER_BIT|GU_DEPTH_BUFFER_BIT);}
  else sceGuClear(GU_COLOR_BUFFER_BIT);
  if(state==INTRO_COVER){imageBackground(0);text5(139,237,"PRESSIONE X",WHITE,2);}
  else if(state==INTRO_ROMS){imageBackground(1);}
