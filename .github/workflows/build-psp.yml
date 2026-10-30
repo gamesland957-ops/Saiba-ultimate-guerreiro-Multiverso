@@ -18,6 +18,11 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
+      - name: Install font generation tools
+        run: |
+          pacman -Sy --noconfirm python python-pillow ttf-lato
+      - name: Generate antialiased font atlas
+        run: python3 tools/generate_font_atlas.py
       - name: Check opening images exist
         run: |
           for image in assets/capa.jpg assets/game_play_roms.jpg assets/gc_company.jpg assets/menus/menu_background_480x272.jpg; do
