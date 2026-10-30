@@ -364,7 +364,7 @@ static void render(void){
  if(state==INTRO_COVER){imageBackground(0);text5(139,237,"PRESSIONE X",WHITE,2);}
  else if(state==INTRO_ROMS){imageBackground(1);}
  else if(state==INTRO_GC){imageBackground(2);}
- else if(state==TITLE||state==SETTINGS||state==TRAINING){imageBackground(3);}
+ else if(state==TITLE||state==SETTINGS){imageBackground(3);}\n else if(state==TRAINING){rect(0,0,W,H,rgba(139,184,205,255));training3d_render();}
  else village();
  if(state==INTRO_COVER){
 
