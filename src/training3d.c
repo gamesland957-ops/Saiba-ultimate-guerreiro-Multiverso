@@ -134,10 +134,10 @@ static void draw_training_disc(float cx, float cz, float radius,
         float z1 = cz + sinf(a) * radius;
         float x2 = cx + cosf(b) * radius;
         float z2 = cz + sinf(b) * radius;
-        float y0 = terrain_height(cx, cz) + 0.65f;
+        float y0 = terrain_height(cx, cz) + 2.2f;
         v[n++] = (TerrainVertex){color, cx, y0, cz};
-        v[n++] = (TerrainVertex){color, x1, terrain_height(x1,z1)+0.65f, z1};
-        v[n++] = (TerrainVertex){color, x2, terrain_height(x2,z2)+0.65f, z2};
+        v[n++] = (TerrainVertex){color, x1, terrain_height(x1,z1)+2.2f, z1};
+        v[n++] = (TerrainVertex){color, x2, terrain_height(x2,z2)+2.2f, z2};
     }
     sceGumDrawArray(GU_TRIANGLES,
         GU_COLOR_8888 | GU_VERTEX_32BITF | GU_TRANSFORM_3D,
@@ -148,7 +148,7 @@ static void draw_training_post(float x, float z, float height,
                                unsigned int color)
 {
     TerrainVertex v[36] __attribute__((aligned(16)));
-    float y = terrain_height(x,z) + 0.3f;
+    float y = terrain_height(x,z) + 1.8f;
     float w = 1.5f;
     float x0=x-w, x1=x+w, z0=z-w, z1=z+w, top=y+height;
     TerrainVertex p[8] = {
@@ -177,22 +177,22 @@ static void draw_training_layout(void)
     int i;
 
     /* Caminho principal liga a entrada ao núcleo de treino. */
-    draw_ground_quad(-8.0f, 36.0f, 8.0f, -18.0f, 0.28f, sand);
-    draw_ground_quad(-30.0f, -18.0f, 30.0f, -13.0f, 0.32f, sand);
+    draw_ground_quad(-8.0f, 36.0f, 8.0f, -18.0f, 1.5f, sand);
+    draw_ground_quad(-30.0f, -18.0f, 30.0f, -13.0f, 1.5f, sand);
 
     /* Área central delimitada por uma moldura baixa de pedra. */
-    draw_ground_quad(-27.0f, -62.0f, 27.0f, -14.0f, 0.42f, edge);
-    draw_ground_quad(-23.0f, -58.0f, 23.0f, -18.0f, 0.55f, sand);
-    draw_ground_quad(-20.0f, -55.0f, 20.0f, -21.0f, 0.63f,
+    draw_ground_quad(-27.0f, -62.0f, 27.0f, -14.0f, 1.6f, edge);
+    draw_ground_quad(-23.0f, -58.0f, 23.0f, -18.0f, 1.8f, sand);
+    draw_ground_quad(-20.0f, -55.0f, 20.0f, -21.0f, 2.0f,
                      color_rgba(184,151,105,255));
 
     /* Três estações distintas: combate, energia e controlo de precisão. */
     draw_training_disc(-62.0f, -29.0f, 13.0f, blue);
     draw_training_disc(62.0f, -29.0f, 13.0f, gold);
     draw_training_disc(0.0f, -133.0f, 16.0f, stone);
-    draw_ground_quad(-62.0f, -17.0f, -48.0f, -41.0f, 0.3f, sand);
-    draw_ground_quad(48.0f, -17.0f, 62.0f, -41.0f, 0.3f, sand);
-    draw_ground_quad(-7.0f, -104.0f, 7.0f, -117.0f, 0.3f, sand);
+    draw_ground_quad(-62.0f, -17.0f, -48.0f, -41.0f, 1.5f, sand);
+    draw_ground_quad(48.0f, -17.0f, 62.0f, -41.0f, 1.5f, sand);
+    draw_ground_quad(-7.0f, -104.0f, 7.0f, -117.0f, 1.5f, sand);
 
     /* Postes de treino e marcos de orientação. */
     draw_training_post(-62.0f,-29.0f,12.0f,stone);
