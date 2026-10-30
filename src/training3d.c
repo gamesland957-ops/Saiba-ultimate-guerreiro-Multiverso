@@ -250,6 +250,7 @@ void training3d_render(void)
     /* A estrutura é desenhada sobre o relevo, com teste de profundidade activo. */
     draw_training_layout();
 
-    sceGuDepthMask(GU_TRUE);
+    /* Manter escrita de profundidade activa para que o clear do frame seguinte funcione. */
+    sceGuDepthMask(GU_FALSE);
     sceGuDisable(GU_DEPTH_TEST);
 }
