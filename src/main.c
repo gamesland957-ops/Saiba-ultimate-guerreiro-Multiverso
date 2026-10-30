@@ -190,21 +190,34 @@ static const unsigned char font5x7[38][7]={
 {14,17,17,15,1,1,14},{0,0,0,31,0,0,0},{0,4,4,0,4,4,0}
 };
 static void text5Layer(int x,int y,const char *str,unsigned int color,int scale){
- for(;*str;str++,x+=6*scale){
-  unsigned char c=(unsigned char)*str;
-  if(c>='a'&&c<='z')c=(unsigned char)(c-32);
+ /* Agrupar todos os pixels da linha num unico desenho GU_SPRITES.
+    A versao anterior emitia um comando GU por pixel, enchendo a lista
+    de comandos da PSP e provocando cintilacao/corrupcao do frame. */
+ size_t chars=strlen(str);
+ if(chars==0||scale<=0)return;
+ TexVertex *unused=0; (void)unused;
+ size_t maxPixels=chars*35u;
+ Vertex *v=(Vertex*)sceGuGetMemory(maxPixels*2u*sizeof(Vertex));
+ if(!v)return;
+ int count=0, penX=x;
+ for(const unsigned char *p=(const unsigned char*)str;*p;p++,penX+=6*scale){
+  unsigned char ch=*p;
+  if(ch>='a'&&ch<='z')ch=(unsigned char)(ch-32);
   int idx=-1;
-  if(c>='A'&&c<='Z')idx=c-'A';
-  else if(c>='0'&&c<='9')idx=26+c-'0';
-  else if(c=='-')idx=36;
-  else if(c==':')idx=37;
-  else if(c=='.')idx=36;
+  if(ch>='A'&&ch<='Z')idx=ch-'A';
+  else if(ch>='0'&&ch<='9')idx=26+ch-'0';
+  else if(ch=='-')idx=36;
+  else if(ch==':'||ch=='.')idx=37;
   if(idx<0)continue;
   for(int row=0;row<7;row++)for(int col=0;col<5;col++){
-   if(font5x7[idx][row]&(1<<(4-col)))
-    rect(x+col*scale,y+row*scale,scale,scale,color);
+   if(font5x7[idx][row]&(1<<(4-col))){
+    float px=(float)(penX+col*scale),py=(float)(y+row*scale);
+    v[count++]=(Vertex){color,px,py,0};
+    v[count++]=(Vertex){color,px+(float)scale,py+(float)scale,0};
+   }
   }
  }
+ if(count)sceGuDrawArray(GU_SPRITES,GU_COLOR_8888|GU_VERTEX_32BITF|GU_TRANSFORM_2D,(unsigned int)count,0,v);
 }
 /* Typography pass: a dark offset shadow improves legibility over illustrated
    backgrounds while retaining the lightweight PSP GU renderer. */
