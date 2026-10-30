@@ -238,14 +238,11 @@ static void text5Layer(int x,int y,const char *str,unsigned int color,int scale)
 /* Typography pass: a dark offset shadow improves legibility over illustrated
    backgrounds while retaining the lightweight PSP GU renderer. */
 static void text5(int x,int y,const char *str,unsigned int color,int scale){
- /* Contorno escuro de 1 px + sombra: melhora o contraste sobre fundos claros
-    e evita que as letras se percam na arte do menu. */
- unsigned int outline=rgba(5,4,10,245);
- text5Layer(x-1,y,str,outline,scale);
- text5Layer(x+1,y,str,outline,scale);
- text5Layer(x,y-1,str,outline,scale);
- text5Layer(x,y+1,str,outline,scale);
- text5Layer(x+1,y+2,str,rgba(5,4,10,220),scale);
+ /* Contorno diagonal discreto e sombra curta: letras mais limpas,
+    com menos camadas e menor consumo da lista de comandos GU. */
+ unsigned int outline=rgba(5,4,10,235);
+ text5Layer(x+1,y+1,str,outline,scale);
+ text5Layer(x+1,y+2,str,rgba(5,4,10,190),scale);
  text5Layer(x,y,str,color,scale);
 }
 
@@ -425,11 +422,12 @@ static void render(void){
      rect(257,y+19,202,2,rgba(255,218,119,245));
      rect(257,y-3,4,24,rgba(255,204,78,255));
      tri(265,y+9,273,y+1,273,y+17,rgba(255,226,128,255));
-     text5(281,y+2,items[i],GOLD,2);
+     /* A opcao mais longa usa escala menor para nunca sair do painel. */
+     text5(281,y+2,items[i],GOLD,(i==2)?1:2);
      rect(449,y+1,3,17,rgba(255,225,139,255));
     }else{
      rect(267,y+20,185,1,rgba(120,96,63,155));
-     text5(281,y+2,items[i],WHITE,2);
+     text5(281,y+2,items[i],WHITE,(i==2)?1:2);
     }
    }
   }else if(state==SETTINGS){
