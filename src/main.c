@@ -195,8 +195,25 @@ static void text5Layer(int x,int y,const char *str,unsigned int color,int scale)
  size_t chars=strlen(str);
  if(chars==0||scale<=0)return;
  TexVertex *unused=0; (void)unused;
- size_t maxPixels=chars*35u;
- Vertex *v=(Vertex*)sceGuGetMemory(maxPixels*2u*sizeof(Vertex));
+ int pixelCount=0;
+ /* Primeira passagem: contar apenas os pixels realmente acesos. */
+ for(const unsigned char *p=(const unsigned char*)str;*p;p++){
+  unsigned char ch=*p;
+  if(ch>='a'&&ch<='z')ch=(unsigned char)(ch-32);
+  int idx=-1;
+  if(ch>='A'&&ch<='Z')idx=ch-'A';
+  else if(ch>='0'&&ch<='9')idx=26+ch-'0';
+  else if(ch=='-')idx=36;
+  else if(ch==':'||ch=='.')idx=37;
+  if(idx<0)continue;
+  for(int row=0;row<7;row++)for(int col=0;col<5;col++)
+   if(font5x7[idx][row]&(1<<(4-col)))pixelCount++;
+ }
+ if(pixelCount==0)return;
+ /* Reservar na lista GU somente os vertices que serao desenhados.
+    A reserva anterior usava 35 pixels por caracter, mesmo para espacos,
+    e multiplicava esse desperdicio pelas seis camadas de texto. */
+ Vertex *v=(Vertex*)sceGuGetMemory((size_t)pixelCount*2u*sizeof(Vertex));
  if(!v)return;
  int count=0, penX=x;
  for(const unsigned char *p=(const unsigned char*)str;*p;p++,penX+=6*scale){
@@ -216,7 +233,7 @@ static void text5Layer(int x,int y,const char *str,unsigned int color,int scale)
    }
   }
  }
- if(count)sceGuDrawArray(GU_SPRITES,GU_COLOR_8888|GU_VERTEX_32BITF|GU_TRANSFORM_2D,(unsigned int)count,0,v);
+ sceGuDrawArray(GU_SPRITES,GU_COLOR_8888|GU_VERTEX_32BITF|GU_TRANSFORM_2D,(unsigned int)count,0,v);
 }
 /* Typography pass: a dark offset shadow improves legibility over illustrated
    backgrounds while retaining the lightweight PSP GU renderer. */
