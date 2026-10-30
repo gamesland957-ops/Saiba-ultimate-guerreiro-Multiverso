@@ -14,7 +14,7 @@ typedef struct {
     float x, y, z;
 } TerrainVertex;
 
-static TerrainVertex terrain[TERRAIN_VERTS];
+static TerrainVertex terrain[TERRAIN_VERTS] __attribute__((aligned(16)));
 static int terrain_ready = 0;
 
 static unsigned int color_rgba(int r, int g, int b, int a)
