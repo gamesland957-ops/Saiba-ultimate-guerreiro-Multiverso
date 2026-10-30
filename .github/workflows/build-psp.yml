@@ -20,7 +20,7 @@ jobs:
         uses: actions/checkout@v4
       - name: Install font generation tools
         run: |
-          apt-get update && apt-get install -y python3 python3-pil fonts-lato
+          apk add --no-cache python3 py3-pillow font-lato
       - name: Generate antialiased font atlas
         run: python3 tools/generate_font_atlas.py
       - name: Check opening images exist
