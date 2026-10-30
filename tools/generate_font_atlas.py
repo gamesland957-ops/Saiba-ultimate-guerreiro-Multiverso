@@ -46,7 +46,7 @@ with out.open("w",encoding="ascii") as f:
     f.write("#ifndef SOBA_FONT_ATLAS_H\n#define SOBA_FONT_ATLAS_H\n#include <stdint.h>\n")
     f.write("#define FONT_ATLAS_SIZE 512\n")
     f.write("typedef struct { uint32_t code; uint16_t x,y,w,h; int8_t left,top; uint8_t advance; } FontGlyph;\n")
-    f.write("#define FONT_GLYPH_COUNT %d\\n"%len(glyphs))
+    f.write("#define FONT_GLYPH_COUNT %d\n"%len(glyphs))
     f.write("static const FontGlyph fontGlyphs[FONT_GLYPH_COUNT]={\n")
     for g in glyphs:
         f.write("{%d,%d,%d,%d,%d,%d,%d,%d},\n"%g)
