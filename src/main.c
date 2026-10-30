@@ -199,7 +199,7 @@ static const FontGlyph *findGlyph(unsigned int code){
 static void text5Layer(int x,int y,const char *str,unsigned int color,int scale){
  if(!str||!*str||scale<=0)return;
  initFont();
- float factor=(float)scale*0.78f;
+ float factor=(float)scale*0.40f;
  size_t n=strlen(str);
  TexVertex *v=(TexVertex*)sceGuGetMemory((n?n:1)*2u*sizeof(TexVertex));
  if(!v)return;
