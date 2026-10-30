@@ -7,7 +7,7 @@
 #define GRID_X 24
 #define GRID_Z 28
 #define CELL 10.0f
-#define TERRAIN_VERTS (GRID_X * GRID_Z * 6)
+#define TERRAIN_VERTS ((GRID_X - 1) * (GRID_Z - 1) * 6)
 
 typedef struct {
     unsigned int color;
@@ -88,7 +88,7 @@ static void build_terrain(void)
 static void draw_distant_ridge(float x, float z, float width,
                                float peak, unsigned int color)
 {
-    TerrainVertex ridge[3];
+    TerrainVertex ridge[3] __attribute__((aligned(16)));
     ridge[0].color = color;
     ridge[0].x = x - width; ridge[0].y = -1.0f; ridge[0].z = z;
     ridge[1].color = color;
